@@ -14,11 +14,27 @@
     <h1 class="logo">🖊️ قلم أحمر</h1>
 
     <form id="loginForm" class="login-form">
-      <input type="email" id="email" placeholder="البريد الإلكتروني" required>
-      <input type="password" id="password" placeholder="كلمة المرور" required>
-      <button type="submit" class="btn-primary">دخول</button>
+      <input 
+        type="email" 
+        id="email" 
+        placeholder="البريد الإلكتروني" 
+        autocomplete="email"
+        autofocus
+        required>
+
+      <div class="password-field">
+        <input 
+          type="password" 
+          id="password" 
+          placeholder="كلمة المرور" 
+          autocomplete="current-password"
+          required>
+        <button type="button" id="togglePassword" class="toggle-password">👁️</button>
+      </div>
+
+      <button type="submit" id="loginBtn" class="btn-primary">دخول</button>
       <a href="#" id="forgotPasswordLink" class="forgot-link">نسيت كلمة المرور؟</a>
-      <p id="loginError" class="error-message"></p>
+      <p id="loginError" class="error-message" role="alert"></p>
     </form>
 
     <p class="switch-auth">
