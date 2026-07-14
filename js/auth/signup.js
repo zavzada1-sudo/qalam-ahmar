@@ -26,19 +26,55 @@ studentTab.addEventListener("click", () => {
   teacherTab.classList.remove("active");
 });
 
+// ------- إظهار / إخفاء كلمة المرور (لأي حقل باسورد) -------
+function setupPasswordToggle(toggleBtnId, inputId) {
+  const toggleBtn = document.getElementById(toggleBtnId);
+  const input = document.getElementById(inputId);
+
+  toggleBtn.addEventListener("click", () => {
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+    toggleBtn.textContent = isHidden ? "🙈" : "👁️";
+  });
+}
+
+setupPasswordToggle("togglePassword", "password");
+setupPasswordToggle("toggleConfirmPassword", "confirmPassword");
+
 // ------- دالة لتوليد Student ID عشوائي وفريد -------
 function generateStudentId() {
   const randomNum = Math.floor(1000 + Math.random() * 9000); // رقم من 4 خانات
   return `STD${randomNum}`;
 }
 
+// ------- دالة مساعدة لعرض الأخطاء -------
+const errorEl = document.getElementById("signupError");
+function showError(message, isSuccess = false) {
+  errorEl.textContent = message;
+  errorEl.style.color = isSuccess ? "green" : "#c0392b";
+}
+
+// ------- ترجمة أكواد أخطاء Firebase لرسائل مفهومة -------
+function translateFirebaseError(code) {
+  switch (code) {
+    case "auth/email-already-in-use":
+      return "هذا البريد الإلكتروني مسجل بالفعل";
+    case "auth/weak-password":
+      return "كلمة المرور ضعيفة جدًا (6 أحرف على الأقل)";
+    case "auth/invalid-email":
+      return "صيغة البريد الإلكتروني غير صحيحة";
+    default:
+      return "حدث خطأ: " + code;
+  }
+}
+
 // ------- إنشاء الحساب -------
 const signupForm = document.getElementById("signupForm");
-const errorEl = document.getElementById("signupError");
+const signupBtn = document.getElementById("signupBtn");
 
 signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  errorEl.textContent = "";
+  showError("");
 
   const fullName = document.getElementById("fullName").value.trim();
   const email = document.getElementById("email").value.trim();
@@ -47,9 +83,12 @@ signupForm.addEventListener("submit", async (e) => {
   const confirmPassword = document.getElementById("confirmPassword").value;
 
   if (password !== confirmPassword) {
-    errorEl.textContent = "كلمة المرور غير متطابقة";
+    showError("كلمة المرور غير متطابقة");
     return;
   }
+
+  signupBtn.disabled = true;
+  signupBtn.textContent = "جاري إنشاء الحساب...";
 
   try {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -78,12 +117,10 @@ signupForm.addEventListener("submit", async (e) => {
     }
 
   } catch (error) {
-    if (error.code === "auth/email-already-in-use") {
-      errorEl.textContent = "هذا البريد الإلكتروني مسجل بالفعل";
-    } else if (error.code === "auth/weak-password") {
-      errorEl.textContent = "كلمة المرور ضعيفة جدًا (6 أحرف على الأقل)";
-    } else {
-      errorEl.textContent = "حدث خطأ، حاول مرة أخرى";
-    }
+    showError(translateFirebaseError(error.code));
+    console.error("Signup error:", error); // عشان نقدر نشخص أي مشكلة من الـ Console
+  } finally {
+    signupBtn.disabled = false;
+    signupBtn.textContent = "إنشاء حساب";
   }
 });

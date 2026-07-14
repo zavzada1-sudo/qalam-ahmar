@@ -27,4 +27,20 @@
         <button type="button" id="togglePassword" class="toggle-password">👁️</button>
       </div>
 
-      <div
+      <div class="password-field">
+        <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور" autocomplete="new-password" required>
+        <button type="button" id="toggleConfirmPassword" class="toggle-password">👁️</button>
+      </div>
+
+      <button type="submit" id="signupBtn" class="btn-primary">إنشاء حساب</button>
+      <p id="signupError" class="error-message" role="alert"></p>
+    </form>
+
+    <p class="switch-auth">
+      عندك حساب بالفعل؟ <a href="../index.html">تسجيل الدخول</a>
+    </p>
+  </div>
+
+  <script type="module" src="../js/auth/signup.js"></script>
+</body>
+</html>
