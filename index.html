@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <title>قلم أحمر - تسجيل الدخول</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/rtl.css">
+
 </head>
 <body>
 
@@ -43,5 +46,14 @@
   </div>
 
   <script type="module" src="js/auth/login.js"></script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then((reg) => console.log('✅ Service Worker registered:', reg.scope))
+        .catch((err) => console.error('❌ Service Worker registration failed:', err));
+    });
+  }
+</script>
 </body>
 </html>
