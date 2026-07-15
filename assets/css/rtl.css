@@ -1,0 +1,18 @@
+/* ============================================
+   تعديلات خاصة بالاتجاه من اليمين لليسار (RTL)
+   ============================================ */
+
+html[dir="rtl"] .toggle-password {
+  left: 10px;
+  right: auto;
+}
+
+html[dir="rtl"] input {
+  text-align: right;
+}
+
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="tel"] {
+  direction: ltr;
+  text-align: right;
+}
