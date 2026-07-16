@@ -231,3 +231,293 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---------- 9. أدوات مساعدة ---------- */
 .hidden { display: none !important; }
+
+
+
+/* ============================================================
+   لوحة تحكم المدرس (Dashboard + Sidebar)
+   ============================================================ */
+
+/* ---------- التخطيط العام ---------- */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---------- القائمة الجانبية (Sidebar) ---------- */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-brand {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  padding: 6px 10px 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  margin-bottom: 18px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  color: rgba(255,255,255,0.85);
+  font-size: 15px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: right;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.nav-item.active {
+  background: #fff;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.nav-icon { font-size: 18px; }
+
+.sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  width: 100%;
+  text-align: right;
+  transition: all 0.2s ease;
+}
+
+.sidebar-logout:hover { background: rgba(255,255,255,0.25); }
+.sidebar-logout:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- المحتوى الرئيسي ---------- */
+.dashboard-content {
+  flex: 1;
+  margin-right: var(--sidebar-width);
+  padding: 24px 30px;
+}
+
+/* ---------- الشريط العلوي ---------- */
+.dashboard-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.topbar-greeting h1 {
+  font-size: 22px;
+  color: var(--text);
+}
+
+.topbar-greeting p {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.topbar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.profile-info strong { font-size: 14px; display: block; }
+.profile-info span { font-size: 12px; color: var(--text-muted); }
+
+/* ---------- زرار القائمة للموبايل ---------- */
+.menu-toggle {
+  display: none;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  font-size: 22px;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- كروت الإحصائيات ---------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow);
+}
+
+.stat-card.red { background: var(--primary); color: #fff; }
+.stat-card.blue { background: var(--blue); color: #fff; }
+.stat-card.green { background: var(--green); color: #fff; }
+.stat-card.orange { background: var(--orange); color: #fff; }
+
+.stat-icon {
+  font-size: 28px;
+  opacity: 0.9;
+}
+
+.stat-info strong {
+  font-size: 26px;
+  font-weight: 700;
+  display: block;
+  line-height: 1.2;
+}
+
+.stat-info p {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* ---------- الأقسام والكروت ---------- */
+.dashboard-section {
+  margin-bottom: 28px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.exams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.exam-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  border-top: 4px solid var(--primary);
+  transition: all 0.2s ease;
+}
+
+.exam-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.exam-card h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.exam-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.badge-type { background: var(--primary-light); color: var(--primary); }
+.badge-status.draft { background: #f0f0f0; color: #666; }
+.badge-status.published { background: var(--green-light); color: var(--green); }
+.badge-status.closed { background: var(--primary-light); color: var(--primary); }
+
+/* ---------- الحالة الفارغة ---------- */
+.empty-state {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 50px 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 18px; margin-bottom: 8px; }
+.empty-state p { color: var(--text-muted); margin-bottom: 20px; }
+.empty-state .btn { display: inline-flex; }
+
+.loading-text { color: var(--text-light); font-size: 14px; padding: 20px; }
+
+/* ---------- خلفية القائمة للموبايل ---------- */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+
+/* ---------- تجاوب الموبايل ---------- */
+@media (max-width: 768px) {
+  .menu-toggle { display: flex; align-items: center; justify-content: center; }
+
+  .sidebar { transform: translateX(100%); }
+  .sidebar.open { transform: translateX(0); }
+
+  .dashboard-content { margin-right: 0; padding: 18px; }
+
+  .sidebar-backdrop.show { display: block; }
+}
