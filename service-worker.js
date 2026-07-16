@@ -35,9 +35,20 @@ self.addEventListener("activate", (event) => {
   );
   self.clients.claim();
 });
-
 self.addEventListener("fetch", (event) => {
+  // نتعامل بس مع طلبات الصفحات والملفات من نفس الموقع (GET)
+  if (event.request.method !== "GET") return;
+
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request)
+      .then((response) => response)
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        // لو لقينا نسخة في الكاش نرجعها، لو مفيش نرجّع خطأ بسيط بدل ما نكسر الصفحة
+        return cached || new Response("غير متصل بالإنترنت", {
+          status: 503,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        });
+      })
   );
 });
