@@ -12,45 +12,77 @@
 </head>
 <body>
 
-  <div class="login-container">
-    <h1 class="logo">🖊️ قلم أحمر</h1>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <h1 class="auth-logo">🖊️ قلم أحمر</h1>
+      <p class="auth-subtitle">إنشاء حساب جديد</p>
 
-    <div class="role-tabs">
-      <button id="teacherTab" class="tab active" type="button">مدرس</button>
-      <button id="studentTab" class="tab" type="button">طالب</button>
+      <div class="role-tabs">
+        <button id="teacherTab" class="tab active" type="button">مدرس</button>
+        <button id="studentTab" class="tab" type="button">طالب</button>
+      </div>
+
+      <form id="signupForm" class="form">
+        <input
+          type="text"
+          id="fullName"
+          placeholder="الاسم الكامل"
+          autocomplete="name"
+          required>
+
+        <input
+          type="email"
+          id="email"
+          placeholder="البريد الإلكتروني"
+          autocomplete="email"
+          required>
+
+        <input
+          type="tel"
+          id="phone"
+          placeholder="رقم الهاتف"
+          autocomplete="tel"
+          required>
+
+        <div class="password-field">
+          <input
+            type="password"
+            id="password"
+            placeholder="كلمة المرور"
+            autocomplete="new-password"
+            required>
+          <button type="button" id="togglePassword" class="toggle-password" aria-label="إظهار كلمة المرور">👁️</button>
+        </div>
+
+        <div class="password-field">
+          <input
+            type="password"
+            id="confirmPassword"
+            placeholder="تأكيد كلمة المرور"
+            autocomplete="new-password"
+            required>
+          <button type="button" id="toggleConfirmPassword" class="toggle-password" aria-label="إظهار كلمة المرور">👁️</button>
+        </div>
+
+        <button type="submit" id="signupBtn" class="btn btn-primary btn-block">إنشاء حساب</button>
+
+        <p id="signupError" class="message error" role="alert"></p>
+      </form>
+
+      <p class="auth-footer">
+        عندك حساب بالفعل؟ <a href="../index.html">تسجيل الدخول</a>
+      </p>
     </div>
-
-    <form id="signupForm" class="login-form">
-      <input type="text" id="fullName" placeholder="الاسم الكامل" autocomplete="name" required>
-      <input type="email" id="email" placeholder="البريد الإلكتروني" autocomplete="email" required>
-      <input type="tel" id="phone" placeholder="رقم الهاتف" autocomplete="tel" required>
-
-      <div class="password-field">
-        <input type="password" id="password" placeholder="كلمة المرور" autocomplete="new-password" required>
-        <button type="button" id="togglePassword" class="toggle-password">👁️</button>
-      </div>
-
-      <div class="password-field">
-        <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور" autocomplete="new-password" required>
-        <button type="button" id="toggleConfirmPassword" class="toggle-password">👁️</button>
-      </div>
-
-      <button type="submit" id="signupBtn" class="btn-primary">إنشاء حساب</button>
-      <p id="signupError" class="error-message" role="alert"></p>
-    </form>
-
-    <p class="switch-auth">
-      عندك حساب بالفعل؟ <a href="../index.html">تسجيل الدخول</a>
-    </p>
   </div>
 
   <script type="module" src="../js/auth/signup.js"></script>
+
   <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js');
-    });
-  }
-</script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
 </body>
 </html>

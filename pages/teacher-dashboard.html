@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#c0392b">
+  <meta name="description" content="لوحة تحكم المدرس في منصة قلم أحمر">
+  <title>قلم أحمر - لوحة تحكم المدرس</title>
+  <link rel="manifest" href="../manifest.json">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+  <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body class="dashboard-body">
+  <div class="dashboard-shell">
+    <aside class="sidebar" id="sidebar" aria-label="القائمة الرئيسية">
+      <a class="brand" href="teacher-dashboard.html" aria-label="قلم أحمر - لوحة التحكم">
+        <span class="brand-icon" aria-hidden="true">🖊️</span>
+        <span>قلم أحمر</span>
+      </a>
+
+      <nav class="sidebar-nav" aria-label="التنقل">
+        <a class="nav-link active" href="teacher-dashboard.html" aria-current="page">
+          <span aria-hidden="true">⌂</span><span>لوحة التحكم</span>
+        </a>
+        <button class="nav-link" type="button" data-coming-soon="إنشاء امتحان">
+          <span aria-hidden="true">✦</span><span>إنشاء امتحان</span>
+        </button>
+        <button class="nav-link" type="button" data-coming-soon="إدارة الفصول">
+          <span aria-hidden="true">▦</span><span>الفصول والطلاب</span>
+        </button>
+        <button class="nav-link" type="button" data-coming-soon="الحضور">
+          <span aria-hidden="true">✓</span><span>الحضور</span>
+        </button>
+        <button class="nav-link" type="button" data-coming-soon="التقارير">
+          <span aria-hidden="true">▤</span><span>التقارير</span>
+        </button>
+      </nav>
+
+      <button class="logout-button" id="logoutButton" type="button">
+        <span aria-hidden="true">↪</span><span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <main class="dashboard-main">
+      <header class="topbar">
+        <button class="menu-button" id="menuButton" type="button" aria-label="فتح القائمة" aria-expanded="false">☰</button>
+        <div>
+          <p class="eyebrow">مرحبًا بك</p>
+          <h1 id="welcomeTitle">لوحة التحكم</h1>
+        </div>
+        <div class="profile-summary">
+          <span class="avatar" id="teacherInitial" aria-hidden="true">م</span>
+          <div>
+            <strong id="teacherName">جارٍ التحميل...</strong>
+            <span>حساب مدرس</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="dashboard-content" aria-live="polite">
+        <div class="status-message" id="dashboardMessage" hidden role="status"></div>
+
+        <section class="hero-card">
+          <div>
+            <p class="eyebrow">نظرة سريعة</p>
+            <h2>كل ما تحتاجه لإدارة طلابك في مكان واحد.</h2>
+            <p>أنشئ امتحاناتك وتابع النتائج وراقب تقدّم طلابك بسهولة.</p>
+          </div>
+          <button class="primary-action" type="button" data-coming-soon="إنشاء امتحان">
+            <span aria-hidden="true">＋</span> إنشاء امتحان جديد
+          </button>
+        </section>
+
+        <section class="stats-grid" aria-label="إحصاءات الحساب">
+          <article class="stat-card">
+            <div class="stat-icon red" aria-hidden="true">▦</div>
+            <div><p>الفصول</p><strong id="classesCount">—</strong><span>فصل مسجل</span></div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-icon blue" aria-hidden="true">♙</div>
+            <div><p>الطلاب</p><strong id="studentsCount">—</strong><span>طالب في فصولك</span></div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-icon orange" aria-hidden="true">✦</div>
+            <div><p>الامتحانات والواجبات</p><strong id="assessmentsCount">—</strong><span>إجمالي المنشور</span></div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-icon green" aria-hidden="true">✓</div>
+            <div><p>إجابات تحتاج مراجعة</p><strong id="pendingCount">—</strong><span>تسليم بانتظار التصحيح</span></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel upcoming-panel">
+            <div class="panel-header">
+              <div><h2>الامتحانات والواجبات القادمة</h2><p>أقرب العناصر المجدولة لطلابك</p></div>
+              <button class="text-button" type="button" data-coming-soon="كل الامتحانات">عرض الكل</button>
+            </div>
+            <div class="empty-state" id="upcomingEmpty" hidden>
+              <span aria-hidden="true">📝</span>
+              <h3>لا توجد امتحانات أو واجبات بعد</h3>
+              <p>ابدأ بإنشاء أول امتحان لطلابك.</p>
+            </div>
+            <ul class="assessment-list" id="upcomingList" aria-label="الامتحانات والواجبات القادمة"></ul>
+          </article>
+
+          <aside class="side-panels">
+            <article class="panel subscription-card">
+              <div class="panel-header"><div><h2>الاشتراك</h2><p>حالة حسابك الحالية</p></div><span class="subscription-icon" aria-hidden="true">♛</span></div>
+              <strong id="subscriptionValue">جارٍ التحميل...</strong>
+              <p id="subscriptionDescription">يتم التحقق من بيانات اشتراكك.</p>
+            </article>
+
+            <article class="panel quick-actions">
+              <div class="panel-header"><div><h2>إجراءات سريعة</h2><p>ابدأ بأهم المهام</p></div></div>
+              <button type="button" data-coming-soon="إنشاء امتحان"><span aria-hidden="true">＋</span>إنشاء امتحان</button>
+              <button type="button" data-coming-soon="إضافة فصل"><span aria-hidden="true">▦</span>إضافة فصل</button>
+              <button type="button" data-coming-soon="تسجيل الحضور"><span aria-hidden="true">✓</span>تسجيل الحضور</button>
+            </article>
+          </aside>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+  <script type="module" src="../js/teacher/dashboard.js"></script>
+</body>
+</html>

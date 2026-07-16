@@ -2,59 +2,61 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
- 
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>قلم أحمر - تسجيل الدخول</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#c0392b">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/rtl.css">
-
 </head>
 <body>
 
-  <div class="login-container">
-    <h1 class="logo">🖊️ قلم أحمر</h1>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <h1 class="auth-logo">🖊️ قلم أحمر</h1>
+      <p class="auth-subtitle">منصة إدارة الامتحانات والواجبات</p>
 
-    <form id="loginForm" class="login-form">
-      <input 
-        type="email" 
-        id="email" 
-        placeholder="البريد الإلكتروني" 
-        autocomplete="email"
-        autofocus
-        required>
-
-      <div class="password-field">
-        <input 
-          type="password" 
-          id="password" 
-          placeholder="كلمة المرور" 
-          autocomplete="current-password"
+      <form id="loginForm" class="form">
+        <input
+          type="email"
+          id="email"
+          placeholder="البريد الإلكتروني"
+          autocomplete="email"
+          autofocus
           required>
-        <button type="button" id="togglePassword" class="toggle-password">👁️</button>
-      </div>
 
-      <button type="submit" id="loginBtn" class="btn-primary">دخول</button>
-      <a href="#" id="forgotPasswordLink" class="forgot-link">نسيت كلمة المرور؟</a>
-      <p id="loginError" class="error-message" role="alert"></p>
-    </form>
+        <div class="password-field">
+          <input
+            type="password"
+            id="password"
+            placeholder="كلمة المرور"
+            autocomplete="current-password"
+            required>
+          <button type="button" id="togglePassword" class="toggle-password" aria-label="إظهار كلمة المرور">👁️</button>
+        </div>
 
-    <p class="switch-auth">
-      مستخدم جديد؟ <a href="pages/signup.html">إنشاء حساب</a>
-    </p>
+        <a href="#" id="forgotPasswordLink" class="form-link">نسيت كلمة المرور؟</a>
+
+        <button type="submit" id="loginBtn" class="btn btn-primary btn-block">دخول</button>
+
+        <p id="loginError" class="message error" role="alert"></p>
+      </form>
+
+      <p class="auth-footer">
+        مستخدم جديد؟ <a href="pages/signup.html">إنشاء حساب</a>
+      </p>
+    </div>
   </div>
 
   <script type="module" src="js/auth/login.js"></script>
+
   <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then((reg) => console.log('✅ Service Worker registered:', reg.scope))
-        .catch((err) => console.error('❌ Service Worker registration failed:', err));
-    });
-  }
-</script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
 </body>
 </html>
