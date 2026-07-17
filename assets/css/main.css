@@ -677,3 +677,32 @@ button { font-family: inherit; cursor: pointer; }
 
 .entity-card:hover .entity-delete { opacity: 1; }
 .entity-delete:hover { color: var(--primary); }
+
+/* ============================================================
+   رحلة الطالب (الانضمام لمدرس)
+   ============================================================ */
+
+.welcome-banner {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  padding: 22px 26px;
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+/* حالة الطالب داخل المجموعة (منضم / بانتظار / يقدر ينضم) */
+.join-status {
+  display: inline-block;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.join-status.member { background: var(--green-light); color: var(--green); }
+.join-status.pending { background: var(--orange-light); color: var(--orange); }
+.join-status.available { background: var(--primary-light); color: var(--primary); }

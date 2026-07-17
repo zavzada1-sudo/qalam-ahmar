@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - الانضمام لمدرس</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="student-home.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>الرئيسية</span>
+        </a>
+        <button class="nav-item active" type="button">
+          <span class="nav-icon">➕</span>
+          <span>الانضمام لمدرس</span>
+        </button>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>الانضمام لمدرس</h1>
+            <p>اكتب الـ ID الخاص بمدرسك عشان تشوف مجموعاته</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- شريط التنقل -->
+      <div class="breadcrumb" id="breadcrumb"></div>
+
+      <!-- ======== المرحلة 1: كتابة ID المدرس ======== -->
+      <section id="findTeacherView">
+        <div class="card" style="max-width: 460px;">
+          <h2 style="margin-bottom: 16px;">ابحث عن مدرسك</h2>
+          <form id="findTeacherForm" class="form">
+            <input type="text" id="teacherCodeInput" placeholder="اكتب الـ ID الخاص بالمدرس" autocomplete="off" required>
+            <button type="submit" id="findBtn" class="btn btn-primary btn-block">بحث</button>
+            <p id="findError" class="message error" role="alert"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======== المرحلة 2: السنوات الدراسية ======== -->
+      <section id="gradesView" class="hidden">
+        <div class="welcome-banner" id="welcomeBanner"></div>
+        <div class="section-header">
+          <h2>اختر سنتك الدراسية</h2>
+        </div>
+        <div id="gradesList" class="cards-grid">
+          <p class="loading-text">جاري التحميل...</p>
+        </div>
+      </section>
+
+      <!-- ======== المرحلة 3: المجموعات ======== -->
+      <section id="groupsView" class="hidden">
+        <div class="section-header">
+          <h2 id="currentGradeName">اختر مجموعتك</h2>
+        </div>
+        <div id="groupsList" class="cards-grid">
+          <p class="loading-text">جاري التحميل...</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="../js/student/join.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
