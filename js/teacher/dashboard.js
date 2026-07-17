@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, collection, query, where, getDocs }
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 // عناصر الصفحة
@@ -58,6 +58,9 @@ onAuthStateChanged(auth, async (user) => {
     // عرض الاسم وأول حرف منه في الصورة الرمزية
     teacherNameEl.textContent = name;
     teacherInitialEl.textContent = name.charAt(0);
+
+     checkTeacherId(user.uid, data);
+
 
     // تحميل الامتحانات والإحصائيات
     await loadTeacherExams(user.uid);
@@ -143,5 +146,77 @@ logoutBtn.addEventListener("click", async () => {
   } catch (error) {
     console.error("Logout error:", error);
     logoutBtn.disabled = false;
+  }
+});
+
+
+// ============================================
+// اختيار ID المدرس (أول مرة)
+// ============================================
+
+const teacherIdModal = document.getElementById("teacherIdModal");
+const teacherIdForm = document.getElementById("teacherIdForm");
+const teacherIdInput = document.getElementById("teacherIdInput");
+const saveIdBtn = document.getElementById("saveIdBtn");
+const teacherIdError = document.getElementById("teacherIdError");
+
+// متغير نحفظ فيه بيانات المدرس الحالي عشان نستخدمها
+let currentTeacherUid = null;
+
+// دالة نستدعيها بعد التأكد إن المستخدم مدرس
+// بتشوف: هل عنده teacherCode ولا لأ؟
+function checkTeacherId(uid, userData) {
+  currentTeacherUid = uid;
+
+  // لو المدرس لسه مختارش ID → نظهر الشاشة
+  if (!userData.teacherCode) {
+    teacherIdModal.classList.remove("hidden");
+  }
+}
+
+// عند حفظ الـ ID
+teacherIdForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  teacherIdError.textContent = "";
+
+  const chosenId = teacherIdInput.value.trim();
+
+  // تحقق بسيط: مش فاضي وطوله معقول
+  if (chosenId.length < 3) {
+    teacherIdError.textContent = "الـ ID لازم يكون 3 حروف/أرقام على الأقل";
+    return;
+  }
+
+  saveIdBtn.disabled = true;
+  saveIdBtn.textContent = "جاري الحفظ...";
+
+  try {
+    // نتأكد إن الـ ID ده مش مستخدم من مدرس تاني
+    const existingQuery = query(
+      collection(db, "users"),
+      where("teacherCode", "==", chosenId)
+    );
+    const existing = await getDocs(existingQuery);
+
+    if (!existing.empty) {
+      teacherIdError.textContent = "الـ ID ده مستخدم بالفعل، اختار واحد تاني";
+      saveIdBtn.disabled = false;
+      saveIdBtn.textContent = "حفظ الـ ID";
+      return;
+    }
+
+    // نحفظ الـ ID في حساب المدرس
+    await updateDoc(doc(db, "users", currentTeacherUid), {
+      teacherCode: chosenId
+    });
+
+    // نخفي الشاشة
+    teacherIdModal.classList.add("hidden");
+
+  } catch (error) {
+    console.error("Save teacher ID error:", error);
+    teacherIdError.textContent = "حدث خطأ، حاول مرة أخرى";
+    saveIdBtn.disabled = false;
+    saveIdBtn.textContent = "حفظ الـ ID";
   }
 });

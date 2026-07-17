@@ -11,6 +11,28 @@
   <link rel="stylesheet" href="../assets/css/rtl.css">
 </head>
 <body>
+  <!-- شاشة اختيار ID المدرس (تظهر أول مرة فقط) -->
+  <div id="teacherIdModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2 class="modal-title">🎯 اختار الـ ID الخاص بيك</h2>
+
+      <p class="modal-warning">
+        ⚠️ الـ ID ده متنساهوش! الطلاب هيوصلوك عن طريقه.
+        خليه سهل تفتكره.
+      </p>
+
+      <form id="teacherIdForm" class="form">
+        <input
+          type="text"
+          id="teacherIdInput"
+          placeholder="اكتب الـ ID الخاص بيك"
+          autocomplete="off"
+          required>
+        <button type="submit" id="saveIdBtn" class="btn btn-primary btn-block">حفظ الـ ID</button>
+        <p id="teacherIdError" class="message error" role="alert"></p>
+      </form>
+    </div>
+  </div>
 
   <div class="dashboard-layout">
 
