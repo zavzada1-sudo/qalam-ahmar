@@ -572,3 +572,108 @@ button { font-family: inherit; cursor: pointer; }
   text-align: right;
   font-weight: 600;
 }
+
+/* ============================================================
+   صفحة الفصول (السنوات والمجموعات)
+   ============================================================ */
+
+/* ---------- شريط التنقل (Breadcrumb) ---------- */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb-item {
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-item:hover { color: var(--primary); }
+
+.breadcrumb-item.active {
+  color: var(--primary);
+  font-weight: 600;
+  cursor: default;
+}
+
+.breadcrumb-separator { color: var(--text-light); }
+
+/* ---------- شبكة الكروت ---------- */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* ---------- كارت السنة / المجموعة ---------- */
+.entity-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 4px solid var(--primary);
+  position: relative;
+}
+
+.entity-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.entity-card-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.entity-card h3 {
+  font-size: 17px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.entity-card p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* شارة عدد الطلبات المعلقة على كارت المجموعة */
+.pending-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+/* ---------- زرار حذف صغير على الكارت ---------- */
+.entity-delete {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 16px;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.entity-card:hover .entity-delete { opacity: 1; }
+.entity-delete:hover { color: var(--primary); }
