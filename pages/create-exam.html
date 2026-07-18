@@ -59,8 +59,8 @@
         <div style="display: flex; align-items: center; gap: 12px;">
           <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
           <div class="topbar-greeting">
-            <h1>إنشاء امتحان</h1>
-            <p>جهّز امتحانك في خطوتين بسيطتين</p>
+           <h1 id="pageMainTitle">إنشاء امتحان</h1>
+            <p id="pageSubtitleText">جهّز امتحانك في خطوتين بسيطتين</p> 
           </div>
         </div>
       </header>
@@ -102,7 +102,7 @@
             <label for="examTimeLimit">الوقت المحدد (بالدقائق) — اختياري</label>
             <input type="number" id="examTimeLimit" min="1" placeholder="مثال: 30">
           </div>
-          
+
           <div class="form-group">
             <label for="examLabelStyle">شكل الاختيارات</label>
             <select id="examLabelStyle">

@@ -100,6 +100,7 @@ async function loadTeacherExams(teacherId) {
       const exam = examDoc.data();
       const card = document.createElement("div");
       card.className = "exam-card";
+      card.style.cursor = "pointer";
       card.innerHTML = `
         <h3>${exam.title || "بدون عنوان"}</h3>
         <div class="exam-badges">
@@ -107,8 +108,12 @@ async function loadTeacherExams(teacherId) {
           <span class="badge badge-status ${exam.status}">${translateStatus(exam.status)}</span>
         </div>
       `;
+      card.addEventListener("click", () => {
+        window.location.href = `create-exam.html?examId=${examDoc.id}`;
+      });
       examsListEl.appendChild(card);
-    });
+
+      
 
   } catch (error) {
     console.error("Error loading exams:", error);

@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, addDoc, collection, query, where, getDocs }
+import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 // ============================================
@@ -46,7 +46,9 @@ const publishBtn = document.getElementById("publishBtn");
 let currentTeacherId = null;
 let selectedGroupIds = new Set();
 let questions = [];       // كل الأسئلة
-let qidCounter = 0;       // معرّف مؤقت فريد لكل سؤال (للتعامل مع DOM بس)
+let qidCounter = 0; 
+let editingExamId = null;   // لو موجود = إحنا بنعدّل امتحان مش بننشئ جديد
+let originalQrToken = null; // نحافظ على نفس qrToken وقت التعديل      // معرّف مؤقت فريد لكل سؤال (للتعامل مع DOM بس)
 
 const ARABIC_LABELS = ["أ", "ب", "ج", "د", "هـ", "و"];
 const ENGLISH_LABELS = ["A", "B", "C", "D", "E", "F"];
@@ -76,7 +78,7 @@ function escapeHtml(str) {
 // ============================================
 
 function getStorageKey() {
-  return `qalam_exam_draft_${currentTeacherId}`;
+  return `qalam_exam_draft_${currentTeacherId}_${editingExamId || "new"}`;
 }
 
 function saveDraftToStorage() {
@@ -167,15 +169,87 @@ onAuthStateChanged(auth, async (user) => {
   }
   currentTeacherId = user.uid;
 
-  const draft = loadDraftFromStorage();
+  const params = new URLSearchParams(window.location.search);
+  editingExamId = params.get("examId");
+
   await loadGroupsChecklist();
 
-  if (draft && (draft.title || (draft.questions && draft.questions.length > 0))) {
-    const wantsRestore = confirm("لقينا امتحان لسه ماتحفظش من قبل، عايز تكمل منه؟");
-    if (wantsRestore) restoreDraft(draft);
-    else clearDraftStorage();
+  if (editingExamId) {
+    document.getElementById("pageMainTitle").textContent = "تعديل الامتحان";
+    document.getElementById("pageSubtitleText").textContent = "عدّل بيانات الامتحان أو أسئلته";
+
+    const localDraft = loadDraftFromStorage();
+    if (localDraft) {
+      const wantsRestore = confirm("لقينا تعديلات لسه ماتحفظتش على الامتحان ده، عايز تكمل منها؟");
+      if (wantsRestore) { restoreDraft(localDraft); return; }
+      else clearDraftStorage();
+    }
+
+    await loadExamForEditing();
+  } else {
+    const draft = loadDraftFromStorage();
+    if (draft && (draft.title || (draft.questions && draft.questions.length > 0))) {
+      const wantsRestore = confirm("لقينا امتحان لسه ماتحفظش من قبل، عايز تكمل منه؟");
+      if (wantsRestore) restoreDraft(draft);
+      else clearDraftStorage();
+    }
   }
 });
+
+// ------- تحميل بيانات امتحان موجود للتعديل -------
+async function loadExamForEditing() {
+  try {
+    const examSnap = await getDoc(doc(db, "exams", editingExamId));
+    if (!examSnap.exists() || examSnap.data().teacherId !== currentTeacherId) {
+      showFormMessage("الامتحان ده مش موجود أو مش بتاعك", "error");
+      return;
+    }
+    const exam = examSnap.data();
+    originalQrToken = exam.qrToken || null;
+
+    examTitleInput.value = exam.title || "";
+    examTypeInput.value = exam.type || "exam";
+    examLabelStyleInput.value = exam.labelStyle || "arabic";
+    examTimeLimitInput.value = exam.timeLimit || "";
+    examFromInput.value = exam.availableFrom ? toLocalInputValue(exam.availableFrom) : "";
+    examToInput.value = exam.availableTo ? toLocalInputValue(exam.availableTo) : "";
+
+    selectedGroupIds = new Set(exam.groupIds || []);
+    groupsChecklist.querySelectorAll(".group-checkbox").forEach((cb) => {
+      cb.checked = selectedGroupIds.has(cb.value);
+    });
+    groupsChecklist.querySelectorAll(".grade-select-all").forEach((cb) => {
+      syncGradeSelectAll(cb.dataset.grade);
+    });
+
+    questions = (exam.questions || []).map((q) => ({
+      qid: ++qidCounter,
+      questionText: q.questionText || "",
+      imageUrl: q.imageUrl || "",
+      imageUploading: false,
+      options: q.options || ["", ""],
+      correctAnswerIndex: q.correctAnswerIndex || 0,
+      points: q.points ?? 1,
+      teacherComment: q.teacherComment || "",
+      resourceUrl: q.resourceUrl || ""
+    }));
+
+    renderAllQuestions();
+    updateSummary();
+
+  } catch (error) {
+    console.error("Load exam for editing error:", error);
+    showFormMessage("تعذر تحميل الامتحان، حاول تحديث الصفحة", "error");
+  }
+}
+
+// ------- تحويل ISO string لصيغة datetime-local -------
+function toLocalInputValue(isoString) {
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // ============================================
 // الخطوة 1: تحميل واختيار المجموعات
@@ -628,7 +702,6 @@ async function saveExam(status) {
       status,
       totalPoints,
       questionsCount: questions.length,
-      qrToken: generateQrToken(),
       createdAt: new Date().toISOString(),
       questions: questions.map((q) => ({
         questionText: q.questionText.trim(),
@@ -641,10 +714,16 @@ async function saveExam(status) {
       }))
     };
 
-    await addDoc(collection(db, "exams"), examDoc);
+    if (editingExamId) {
+      examDoc.qrToken = originalQrToken || generateQrToken(); // نحافظ على نفس رابط الـ QR
+      await updateDoc(doc(db, "exams", editingExamId), examDoc);
+    } else {
+      examDoc.qrToken = generateQrToken();
+      await addDoc(collection(db, "exams"), examDoc);
+    }
 
     clearDraftStorage();
-    showFormMessage(status === "published" ? "تم نشر الامتحان بنجاح ✅" : "تم حفظ المسودة ✅", "success");
+    showFormMessage(status === "published" ? "تم حفظ التعديلات ونشر الامتحان ✅" : "تم حفظ المسودة ✅", "success");
     setTimeout(() => { window.location.href = "teacher-dashboard.html"; }, 1200);
 
   } catch (error) {
