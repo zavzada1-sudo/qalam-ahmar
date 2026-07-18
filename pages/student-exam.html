@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - حل امتحان</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <!-- شاشة التحميل الأولية -->
+  <div id="loadingView" class="exam-loading">
+    <div class="loading-spinner"></div>
+    <p>جاري تحميل الامتحان...</p>
+  </div>
+
+  <!-- شاشة الخطأ (لو حصلت مشكلة) -->
+  <div id="errorView" class="exam-error hidden">
+    <div class="error-icon">⚠️</div>
+    <h2 id="errorTitle">حصلت مشكلة</h2>
+    <p id="errorMessage"></p>
+    <a href="student-home.html" class="btn btn-primary">← الرجوع للرئيسية</a>
+  </div>
+
+  <!-- شاشة معلومات الامتحان (قبل ما يبدأ) -->
+  <div id="infoView" class="exam-container hidden">
+    <div class="exam-info-card">
+      <h1 id="examTitle">اسم الامتحان</h1>
+      <p class="exam-teacher" id="examTeacher">مع المدرس</p>
+
+      <div class="exam-info-stats">
+        <div class="exam-info-stat">
+          <span class="stat-icon">📝</span>
+          <span class="stat-label">عدد الأسئلة</span>
+          <span class="stat-value" id="infoQuestionsCount">0</span>
+        </div>
+        <div class="exam-info-stat">
+          <span class="stat-icon">🎯</span>
+          <span class="stat-label">الدرجة الكلية</span>
+          <span class="stat-value" id="infoTotalPoints">0</span>
+        </div>
+        <div class="exam-info-stat">
+          <span class="stat-icon">⏱️</span>
+          <span class="stat-label">الوقت المحدد</span>
+          <span class="stat-value" id="infoTimeLimit">مفتوح</span>
+        </div>
+      </div>
+
+      <div class="exam-info-warning">
+        <strong>ملاحظات قبل ما تبدأ:</strong>
+        <ul>
+          <li>الامتحان هيتقفل تلقائيًا لما الوقت يخلص أو لما تدوس "تسليم"</li>
+          <li>مش هتقدر تحل الامتحان تاني بعد التسليم</li>
+          <li>حل الأسئلة كلها قبل ما تسلّم</li>
+        </ul>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="startExamBtn">🚀 ابدأ الامتحان</button>
+    </div>
+  </div>
+
+  <!-- شاشة الحل الفعلية -->
+  <div id="examView" class="exam-container hidden">
+
+    <!-- شريط علوي ثابت (عداد + تقدم) -->
+    <div class="exam-topbar" id="examTopbar">
+      <div class="exam-progress">
+        <span id="answeredCount">0</span> / <span id="totalCount">0</span> إجابة
+      </div>
+      <div class="exam-timer hidden" id="examTimer">
+        ⏱️ <span id="timerDisplay">--:--</span>
+      </div>
+      <button class="btn btn-primary" id="submitBtn">تسليم ✓</button>
+    </div>
+
+    <!-- الأسئلة -->
+    <div id="questionsList" class="exam-questions"></div>
+
+    <!-- زرار تسليم إضافي في الأسفل (للتيسير) -->
+    <div class="exam-bottom-submit">
+      <button class="btn btn-primary btn-block" id="submitBtnBottom">تسليم الامتحان ✓</button>
+    </div>
+  </div>
+
+  <!-- مودال "الوقت خلص" -->
+  <div id="timeUpModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="time-up-icon">⏰</div>
+      <h2>الوقت خلص</h2>
+      <p>مقدرش تعدّل إجاباتك أكتر من كده، دوس تسليم عشان تحفظ اللي حليته.</p>
+      <button class="btn btn-primary btn-block" id="timeUpSubmitBtn">تسليم الآن ✓</button>
+    </div>
+  </div>
+
+  <!-- مودال تأكيد التسليم -->
+  <div id="confirmSubmitModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2>تأكيد التسليم</h2>
+      <p id="confirmSubmitMessage">هتسلّم الامتحان دلوقتي، مش هتقدر تعدّل بعد كده. متأكد؟</p>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-primary btn-block" id="finalSubmitBtn">أيوه، سلّم</button>
+        <button class="btn btn-outline btn-block" id="cancelSubmitBtn">لأ، رجّعني</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/student/student-exam.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
