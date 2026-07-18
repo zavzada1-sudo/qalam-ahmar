@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - إنشاء امتحان</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="teacher-dashboard.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>لوحة التحكم</span>
+        </a>
+        <a href="create-exam.html" class="nav-item active">
+          <span class="nav-icon">✦</span>
+          <span>إنشاء امتحان</span>
+        </a>
+        <a href="classes.html" class="nav-item">
+          <span class="nav-icon">▦</span>
+          <span>الفصول والطلاب</span>
+        </a>
+        <a href="teacher-profile.html" class="nav-item">
+          <span class="nav-icon">👤</span>
+          <span>حسابي</span>
+        </a>
+        <button class="nav-item" type="button">
+          <span class="nav-icon">✓</span>
+          <span>الحضور</span>
+        </button>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>إنشاء امتحان</h1>
+            <p>جهّز امتحانك في خطوتين بسيطتين</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- مؤشر الخطوات -->
+      <div class="exam-steps">
+        <div class="exam-step active" id="stepIndicator1">
+          <span class="exam-step-num">1</span>
+          <span>بيانات الامتحان</span>
+        </div>
+        <div class="exam-step-line"></div>
+        <div class="exam-step" id="stepIndicator2">
+          <span class="exam-step-num">2</span>
+          <span>الأسئلة</span>
+        </div>
+      </div>
+
+      <div id="formMessage" class="gd-message"></div>
+
+      <!-- ======== الخطوة 1: بيانات الامتحان ======== -->
+      <section id="step1View">
+        <div class="profile-card">
+          <div class="form-group">
+            <label for="examTitle">عنوان الامتحان</label>
+            <input type="text" id="examTitle" placeholder="مثال: امتحان الوحدة الأولى" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="examType">نوع الاختبار</label>
+            <select id="examType">
+              <option value="exam">امتحان</option>
+              <option value="quiz">اختبار قصير</option>
+              <option value="assignment">واجب</option>
+              <option value="worksheet">ورقة عمل</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="examTimeLimit">الوقت المحدد (بالدقائق) — اختياري</label>
+            <input type="number" id="examTimeLimit" min="1" placeholder="مثال: 30">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="examFrom">يبدأ من — اختياري</label>
+              <input type="datetime-local" id="examFrom">
+            </div>
+            <div class="form-group">
+              <label for="examTo">يغلق في — اختياري</label>
+              <input type="datetime-local" id="examTo">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>المجموعات المستهدفة</label>
+            <p class="profile-label" style="margin-bottom: 10px;">اختار مجموعة أو أكتر هيوصلهم الامتحان</p>
+            <div id="groupsChecklist">
+              <p class="loading-text">جاري تحميل المجموعات...</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="btn btn-primary" id="nextStepBtn">التالي: الأسئلة ←</button>
+        </div>
+      </section>
+
+      <!-- ======== الخطوة 2: الأسئلة ======== -->
+      <section id="step2View" class="hidden">
+        <div class="section-header">
+          <h2>الأسئلة (<span id="questionsCount">0</span>) — <span id="totalPointsLabel">0</span> درجة</h2>
+          <button class="btn btn-primary" id="addQuestionBtn">+ إضافة سؤال</button>
+        </div>
+
+        <div id="questionsContainer"></div>
+
+        <div class="exam-bottom-actions">
+          <button class="btn btn-outline" id="backStepBtn">→ رجوع للبيانات</button>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" id="saveDraftBtn">حفظ كمسودة</button>
+            <button class="btn btn-primary" id="publishBtn">نشر الامتحان ✓</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="../js/teacher/create-exam.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>

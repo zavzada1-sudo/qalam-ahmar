@@ -766,3 +766,89 @@ button { font-family: inherit; cursor: pointer; }
   .gd-row { flex-wrap: wrap; }
   .gd-row-actions { width: 100%; justify-content: flex-end; }
 }
+
+
+/* ============================================
+   الملف الشخصي للمدرس
+   ============================================ */
+.profile-card {
+  background: #fff; border: 1px solid #eee; border-radius: 14px;
+  padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.profile-head { display: flex; align-items: center; gap: 14px; }
+.profile-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--primary, #c0392b); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 700; flex-shrink: 0;
+}
+.profile-divider { height: 1px; background: #eee; }
+.profile-row-item { display: flex; flex-direction: column; gap: 6px; }
+.profile-label { font-size: .82rem; color: #999; }
+.profile-value { font-size: 1rem; color: #2c3e50; font-weight: 600; }
+.profile-code { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.profile-code strong {
+  font-size: 1.15rem; color: var(--primary, #c0392b);
+  background: #faf1f0; padding: 4px 12px; border-radius: 8px; letter-spacing: .5px;
+}
+
+
+/* ============================================
+   إنشاء الامتحان (Wizard + الأسئلة)
+   ============================================ */
+.exam-steps { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.exam-step { display: flex; align-items: center; gap: 8px; color: #999; font-size: .9rem; font-weight: 600; }
+.exam-step.active { color: var(--primary, #c0392b); }
+.exam-step-num {
+  width: 26px; height: 26px; border-radius: 50%; background: #eee;
+  display: flex; align-items: center; justify-content: center; font-size: .8rem;
+}
+.exam-step.active .exam-step-num { background: var(--primary, #c0392b); color: #fff; }
+.exam-step-line { width: 40px; height: 2px; background: #eee; }
+
+.form-group { margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: .88rem; font-weight: 600; color: #444; }
+.form-group input, .form-group select, .form-group textarea {
+  padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: .95rem; font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--primary, #c0392b);
+}
+.form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.form-row .form-group { flex: 1; min-width: 180px; }
+
+.checklist-section { margin-bottom: 14px; border: 1px solid #eee; border-radius: 10px; padding: 10px 12px; }
+.checklist-header { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px; }
+.checklist-items { display: flex; flex-direction: column; gap: 6px; padding-inline-start: 24px; }
+.checklist-item { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
+
+.question-card { margin-bottom: 18px; }
+.question-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.question-card-actions { display: flex; gap: 6px; }
+.question-card-actions .gd-btn { padding: 5px 9px; font-size: .8rem; }
+
+.q-image-area { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.q-image-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px;
+  border: 1px dashed #ccc; border-radius: 8px; cursor: pointer; font-size: .9rem;
+  color: #555; transition: border-color .15s;
+}
+.q-image-upload-btn:hover { border-color: var(--primary, #c0392b); }
+.q-image-preview { display: flex; align-items: center; gap: 10px; }
+.q-image-preview img { max-width: 140px; max-height: 100px; border-radius: 8px; border: 1px solid #eee; object-fit: cover; }
+.q-uploading { font-size: .85rem; color: #999; }
+
+.q-options-list { display: flex; flex-direction: column; gap: 8px; }
+.q-option-row { display: flex; align-items: center; gap: 10px; }
+.q-option-label {
+  width: 26px; height: 26px; border-radius: 50%; background: #f5f5f5;
+  display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; flex-shrink: 0;
+}
+.q-option-text { flex: 1; }
+
+.exam-bottom-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee;
+}
