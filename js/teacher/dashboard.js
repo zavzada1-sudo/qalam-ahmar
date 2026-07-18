@@ -112,6 +112,7 @@ async function loadTeacherExams(teacherId) {
         window.location.href = `create-exam.html?examId=${examDoc.id}`;
       });
       examsListEl.appendChild(card);
+    });
 
       
 
