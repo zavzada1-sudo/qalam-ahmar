@@ -28,6 +28,7 @@ const formMessage = document.getElementById("formMessage");
 const examTitleInput = document.getElementById("examTitle");
 const examTypeInput = document.getElementById("examType");
 const examTimeLimitInput = document.getElementById("examTimeLimit");
+const examLabelStyleInput = document.getElementById("examLabelStyle");
 const examFromInput = document.getElementById("examFrom");
 const examToInput = document.getElementById("examTo");
 const groupsChecklist = document.getElementById("groupsChecklist");
@@ -178,6 +179,7 @@ function syncGradeSelectAll(gradeId) {
 // ------- الانتقال للخطوة 2 -------
 nextStepBtn.addEventListener("click", () => {
   showFormMessage("");
+  
 
   if (!examTitleInput.value.trim()) {
     showFormMessage("اكتب عنوان الامتحان الأول", "error");
@@ -189,12 +191,19 @@ nextStepBtn.addEventListener("click", () => {
     return;
   }
 
+
+
   step1View.classList.add("hidden");
   step2View.classList.remove("hidden");
   stepIndicator1.classList.remove("active");
   stepIndicator2.classList.add("active");
 
   if (questions.length === 0) addQuestion(); // نبدأله بسؤال واحد جاهز
+});
+
+// إعادة رسم كل الأسئلة لما شكل الاختيارات العام يتغيّر
+examLabelStyleInput.addEventListener("change", () => {
+  if (questions.length > 0) renderAllQuestions();
 });
 
 backStepBtn.addEventListener("click", () => {
@@ -214,7 +223,6 @@ function addQuestion() {
     questionText: "",
     imageUrl: "",
     imageUploading: false,
-    labelStyle: "arabic",
     options: ["", ""],
     correctAnswerIndex: 0,
     points: 1,
@@ -227,7 +235,7 @@ function addQuestion() {
 
 addQuestionBtn.addEventListener("click", addQuestion);
 
-function getOptionLabel(labelStyle, index) {
+function getOptionLabel(index) {
   if (labelStyle === "arabic") return ARABIC_LABELS[index] || (index + 1);
   if (labelStyle === "english") return ENGLISH_LABELS[index] || (index + 1);
   return String(index + 1);
@@ -299,14 +307,6 @@ function buildQuestionCard(index) {
       </div>
     </div>
 
-    <div class="form-group">
-      <label>شكل الاختيارات</label>
-      <select class="q-label-style">
-        <option value="arabic" ${q.labelStyle === "arabic" ? "selected" : ""}>أ، ب، ج، د</option>
-        <option value="english" ${q.labelStyle === "english" ? "selected" : ""}>A, B, C, D</option>
-        <option value="numbers" ${q.labelStyle === "numbers" ? "selected" : ""}>1، 2، 3، 4</option>
-      </select>
-    </div>
 
     <div class="form-group">
       <label>الاختيارات (حدد دائرة الإجابة الصحيحة)</label>
@@ -315,7 +315,7 @@ function buildQuestionCard(index) {
           <div class="q-option-row">
             <input type="radio" name="correct-${q.qid}" class="q-correct-radio"
                    value="${optIndex}" ${q.correctAnswerIndex === optIndex ? "checked" : ""}>
-            <span class="q-option-label">${getOptionLabel(q.labelStyle, optIndex)}</span>
+            <span class="q-option-label">${getOptionLabel(optIndex)}</span>
             <input type="text" class="q-option-text" data-index="${optIndex}"
                    value="${escapeHtml(opt)}" placeholder="نص الاختيار">
             ${q.options.length > MIN_OPTIONS
@@ -378,11 +378,6 @@ function attachQuestionCardEvents(card, index) {
     updateSummary();
   });
 
-  // شكل الاختيارات (يحتاج إعادة رسم عشان الليبل يتغير)
-  card.querySelector(".q-label-style").addEventListener("change", (e) => {
-    questions[index].labelStyle = e.target.value;
-    refreshOneQuestion(index);
-  });
 
   // نصوص الاختيارات
   card.querySelectorAll(".q-option-text").forEach((input) => {
@@ -546,6 +541,7 @@ async function saveExam(status) {
       teacherId: currentTeacherId,
       title: examTitleInput.value.trim(),
       type: examTypeInput.value,
+      labelStyle: examLabelStyleInput.value,
       timeLimit: examTimeLimitInput.value ? Number(examTimeLimitInput.value) : null,
       availableFrom: examFromInput.value ? new Date(examFromInput.value).toISOString() : null,
       availableTo: examToInput.value ? new Date(examToInput.value).toISOString() : null,
@@ -558,7 +554,6 @@ async function saveExam(status) {
       questions: questions.map((q) => ({
         questionText: q.questionText.trim(),
         imageUrl: q.imageUrl || null,
-        labelStyle: q.labelStyle,
         options: q.options.map((opt) => opt.trim()),
         correctAnswerIndex: q.correctAnswerIndex,
         points: Number(q.points) || 0,
