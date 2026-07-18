@@ -706,3 +706,63 @@ button { font-family: inherit; cursor: pointer; }
 .join-status.member { background: var(--green-light); color: var(--green); }
 .join-status.pending { background: var(--orange-light); color: var(--orange); }
 .join-status.available { background: var(--primary-light); color: var(--primary); }
+/* ============================================
+   شاشة تفاصيل المجموعة (طلبات + طلاب)
+   ============================================ */
+.gd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 24px 16px; z-index: 1000; overflow-y: auto; }
+.gd-overlay.hidden { display: none; }
+
+.gd-modal { background: #fff; width: 100%; max-width: 560px; border-radius: 14px;
+  padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); animation: gdFadeIn .2s ease; }
+@keyframes gdFadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+.gd-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.gd-header h2 { margin: 0; font-size: 1.15rem; color: var(--primary, #c0392b); }
+.gd-close { background: none; border: none; font-size: 1.3rem; cursor: pointer;
+  color: #777; line-height: 1; padding: 4px 8px; border-radius: 8px; }
+.gd-close:hover { background: #f2f2f2; color: #333; }
+
+.gd-message { display: none; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: .9rem; }
+.gd-message.info { background: #eef4ff; color: #2c3e50; }
+.gd-message.success { background: #e8f8ef; color: #1e824c; }
+.gd-message.error { background: #fdecea; color: #c0392b; }
+
+.gd-search { width: 100%; padding: 10px 12px; margin-bottom: 14px; border: 1px solid #ddd;
+  border-radius: 8px; font-size: .95rem; font-family: inherit; }
+.gd-search:focus { outline: none; border-color: var(--primary, #c0392b); }
+
+.gd-section { margin-bottom: 18px; }
+.gd-section-head { margin-bottom: 8px; }
+.gd-section-head h3 { margin: 0; font-size: 1rem; color: #333; }
+
+.gd-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  background: #faf7f7; border: 1px dashed #e0cfcf; border-radius: 8px;
+  padding: 8px 10px; margin-bottom: 10px; }
+.gd-bulk.hidden { display: none; }
+.gd-select-all { display: flex; align-items: center; gap: 6px; font-size: .9rem;
+  cursor: pointer; margin-inline-end: auto; }
+
+.gd-list { display: flex; flex-direction: column; gap: 8px; }
+.gd-row { display: flex; align-items: center; gap: 10px; border: 1px solid #eee;
+  border-radius: 10px; padding: 10px 12px; background: #fff; }
+.gd-row-check { display: flex; align-items: center; }
+.gd-row-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.gd-row-name { font-weight: 600; color: #2c3e50; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-row-code { font-size: .8rem; color: #999; }
+.gd-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.gd-empty { text-align: center; color: #999; padding: 14px; font-size: .9rem; }
+
+.gd-btn { border: none; border-radius: 8px; padding: 7px 12px; font-size: .85rem;
+  font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+.gd-btn:disabled { opacity: .5; cursor: not-allowed; }
+.gd-btn:hover:not(:disabسled) { opacity: .88; }
+.gd-btn-accept { background: #27ae60; color: #fff; }
+.gd-btn-primary { background: var(--primary, #c0392b); color: #fff; }
+.gd-btn-reject { background: #fff; color: #c0392b; border: 1px solid #e2b3ae; }
+
+@media (max-width: 480px) {
+  .gd-row { flex-wrap: wrap; }
+  .gd-row-actions { width: 100%; justify-content: flex-end; }
+}
