@@ -11,7 +11,7 @@ import { doc, getDoc, addDoc, collection, query, where, getDocs }
 // ============================================
 // ⚠️ ضع الـ API Key بتاعك من imgbb.com هنا
 // ============================================
-const IMGBB_API_KEY = "6ed0a8bea361b328173b3a4a4a10d10e";
+const IMGBB_API_KEY = "ضع_المفتاح_هنا";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
@@ -28,9 +28,9 @@ const formMessage = document.getElementById("formMessage");
 const examTitleInput = document.getElementById("examTitle");
 const examTypeInput = document.getElementById("examType");
 const examTimeLimitInput = document.getElementById("examTimeLimit");
-const examLabelStyleInput = document.getElementById("examLabelStyle");
 const examFromInput = document.getElementById("examFrom");
 const examToInput = document.getElementById("examTo");
+const examLabelStyleInput = document.getElementById("examLabelStyle");
 const groupsChecklist = document.getElementById("groupsChecklist");
 const nextStepBtn = document.getElementById("nextStepBtn");
 
@@ -71,6 +71,92 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
+// ============================================
+// الحفظ التلقائي المحلي (يحمي من الريفريش/قطع النت)
+// ============================================
+
+function getStorageKey() {
+  return `qalam_exam_draft_${currentTeacherId}`;
+}
+
+function saveDraftToStorage() {
+  if (!currentTeacherId) return;
+  try {
+    const state = {
+      title: examTitleInput.value,
+      type: examTypeInput.value,
+      timeLimit: examTimeLimitInput.value,
+      from: examFromInput.value,
+      to: examToInput.value,
+      labelStyle: examLabelStyleInput.value,
+      groupIds: [...selectedGroupIds],
+      questions,
+      qidCounter,
+      currentStep: step2View.classList.contains("hidden") ? 1 : 2,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(getStorageKey(), JSON.stringify(state));
+  } catch (error) {
+    console.error("Autosave error:", error);
+  }
+}
+
+function clearDraftStorage() {
+  if (!currentTeacherId) return;
+  try { localStorage.removeItem(getStorageKey()); } catch (error) { /* تجاهل */ }
+}
+
+function loadDraftFromStorage() {
+  if (!currentTeacherId) return null;
+  try {
+    const raw = localStorage.getItem(getStorageKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.error("Load draft error:", error);
+    return null;
+  }
+}
+
+// حفظ تلقائي بعد أي كتابة (بتأخير بسيط عشان منكتبش على القرص كل حرف)
+let autosaveTimer = null;
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(saveDraftToStorage, 400);
+}
+document.querySelector(".dashboard-content").addEventListener("input", scheduleAutosave);
+document.querySelector(".dashboard-content").addEventListener("change", scheduleAutosave);
+
+function restoreDraft(draft) {
+  examTitleInput.value = draft.title || "";
+  examTypeInput.value = draft.type || "exam";
+  examTimeLimitInput.value = draft.timeLimit || "";
+  examFromInput.value = draft.from || "";
+  examToInput.value = draft.to || "";
+  examLabelStyleInput.value = draft.labelStyle || "arabic";
+
+  selectedGroupIds = new Set(draft.groupIds || []);
+  groupsChecklist.querySelectorAll(".group-checkbox").forEach((cb) => {
+    cb.checked = selectedGroupIds.has(cb.value);
+  });
+  groupsChecklist.querySelectorAll(".grade-select-all").forEach((cb) => {
+    syncGradeSelectAll(cb.dataset.grade);
+  });
+
+  questions = draft.questions || [];
+  qidCounter = draft.qidCounter || questions.length;
+
+  if (draft.currentStep === 2) {
+    step1View.classList.add("hidden");
+    step2View.classList.remove("hidden");
+    stepIndicator1.classList.remove("active");
+    stepIndicator2.classList.add("active");
+    renderAllQuestions();
+    updateSummary();
+  }
+
+  showFormMessage("تم استرجاع آخر نسخة غير محفوظة ✅", "success");
+}
+
 // ------- حماية الصفحة -------
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "../index.html"; return; }
@@ -80,7 +166,15 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   currentTeacherId = user.uid;
+
+  const draft = loadDraftFromStorage();
   await loadGroupsChecklist();
+
+  if (draft && (draft.title || (draft.questions && draft.questions.length > 0))) {
+    const wantsRestore = confirm("لقينا امتحان لسه ماتحفظش من قبل، عايز تكمل منه؟");
+    if (wantsRestore) restoreDraft(draft);
+    else clearDraftStorage();
+  }
 });
 
 // ============================================
@@ -108,7 +202,6 @@ async function loadGroupsChecklist() {
       return;
     }
 
-    // نبني خريطة: gradeId -> {gradeName, groups: []}
     const gradesMap = new Map();
     gradesSnap.forEach((g) => gradesMap.set(g.id, { gradeName: g.data().gradeName, groups: [] }));
     groupsSnap.forEach((g) => {
@@ -141,7 +234,6 @@ async function loadGroupsChecklist() {
       groupsChecklist.appendChild(section);
     });
 
-    // تحديد فردي
     groupsChecklist.querySelectorAll(".group-checkbox").forEach((cb) => {
       cb.addEventListener("change", (e) => {
         if (e.target.checked) selectedGroupIds.add(e.target.value);
@@ -150,7 +242,6 @@ async function loadGroupsChecklist() {
       });
     });
 
-    // تحديد كل مجموعات السنة دفعة واحدة
     groupsChecklist.querySelectorAll(".grade-select-all").forEach((cb) => {
       cb.addEventListener("change", (e) => {
         const gradeId = e.target.dataset.grade;
@@ -179,7 +270,6 @@ function syncGradeSelectAll(gradeId) {
 // ------- الانتقال للخطوة 2 -------
 nextStepBtn.addEventListener("click", () => {
   showFormMessage("");
-  
 
   if (!examTitleInput.value.trim()) {
     showFormMessage("اكتب عنوان الامتحان الأول", "error");
@@ -191,19 +281,13 @@ nextStepBtn.addEventListener("click", () => {
     return;
   }
 
-
-
   step1View.classList.add("hidden");
   step2View.classList.remove("hidden");
   stepIndicator1.classList.remove("active");
   stepIndicator2.classList.add("active");
 
-  if (questions.length === 0) addQuestion(); // نبدأله بسؤال واحد جاهز
-});
-
-// إعادة رسم كل الأسئلة لما شكل الاختيارات العام يتغيّر
-examLabelStyleInput.addEventListener("change", () => {
-  if (questions.length > 0) renderAllQuestions();
+  if (questions.length === 0) addQuestion();
+  saveDraftToStorage();
 });
 
 backStepBtn.addEventListener("click", () => {
@@ -211,6 +295,12 @@ backStepBtn.addEventListener("click", () => {
   step1View.classList.remove("hidden");
   stepIndicator2.classList.remove("active");
   stepIndicator1.classList.add("active");
+  saveDraftToStorage();
+});
+
+// إعادة رسم الأسئلة لما شكل الاختيارات العام يتغيّر
+examLabelStyleInput.addEventListener("change", () => {
+  if (questions.length > 0) renderAllQuestions();
 });
 
 // ============================================
@@ -231,13 +321,15 @@ function addQuestion() {
   });
   renderAllQuestions();
   updateSummary();
+  saveDraftToStorage();
 }
 
 addQuestionBtn.addEventListener("click", addQuestion);
 
 function getOptionLabel(index) {
-  if (labelStyle === "arabic") return ARABIC_LABELS[index] || (index + 1);
-  if (labelStyle === "english") return ENGLISH_LABELS[index] || (index + 1);
+  const style = examLabelStyleInput.value;
+  if (style === "arabic") return ARABIC_LABELS[index] || (index + 1);
+  if (style === "english") return ENGLISH_LABELS[index] || (index + 1);
   return String(index + 1);
 }
 
@@ -247,7 +339,6 @@ function updateSummary() {
   totalPointsLabel.textContent = total;
 }
 
-// ------- رسم كل الأسئلة (بيتنفذ بس عند تغييرات هيكلية) -------
 function renderAllQuestions() {
   questionsContainer.innerHTML = "";
   if (questions.length === 0) {
@@ -259,7 +350,6 @@ function renderAllQuestions() {
   });
 }
 
-// ------- إعادة رسم سؤال واحد بس (يحافظ على تركيز باقي الحقول) -------
 function refreshOneQuestion(index) {
   const oldCard = questionsContainer.querySelector(`[data-qid="${questions[index].qid}"]`);
   const newCard = buildQuestionCard(index);
@@ -267,7 +357,6 @@ function refreshOneQuestion(index) {
   else renderAllQuestions();
 }
 
-// ------- بناء كارت سؤال واحد -------
 function buildQuestionCard(index) {
   const q = questions[index];
   const card = document.createElement("div");
@@ -306,7 +395,6 @@ function buildQuestionCard(index) {
         ${q.imageUploading ? `<span class="q-uploading">جاري الرفع...</span>` : ""}
       </div>
     </div>
-
 
     <div class="form-group">
       <label>الاختيارات (حدد دائرة الإجابة الصحيحة)</label>
@@ -353,33 +441,24 @@ function buildQuestionCard(index) {
   return card;
 }
 
-// ------- ربط الأحداث بكارت السؤال -------
 function attachQuestionCardEvents(card, index) {
-  const q = questions[index];
-
-  // نص السؤال (من غير إعادة رسم عشان مايفقدش التركيز)
   card.querySelector(".q-text").addEventListener("input", (e) => {
     questions[index].questionText = e.target.value;
   });
 
-  // تعليق المدرس
   card.querySelector(".q-comment").addEventListener("input", (e) => {
     questions[index].teacherComment = e.target.value;
   });
 
-  // رابط المصدر
   card.querySelector(".q-resource").addEventListener("input", (e) => {
     questions[index].resourceUrl = e.target.value;
   });
 
-  // الدرجة
   card.querySelector(".q-points").addEventListener("input", (e) => {
     questions[index].points = e.target.value;
     updateSummary();
   });
 
-
-  // نصوص الاختيارات
   card.querySelectorAll(".q-option-text").forEach((input) => {
     input.addEventListener("input", (e) => {
       const optIndex = Number(e.target.dataset.index);
@@ -387,23 +466,21 @@ function attachQuestionCardEvents(card, index) {
     });
   });
 
-  // اختيار الإجابة الصحيحة
   card.querySelectorAll(".q-correct-radio").forEach((radio) => {
     radio.addEventListener("change", (e) => {
       questions[index].correctAnswerIndex = Number(e.target.value);
     });
   });
 
-  // إضافة اختيار
   const addOptionBtn = card.querySelector(".q-add-option");
   if (addOptionBtn) addOptionBtn.addEventListener("click", () => {
     if (questions[index].options.length < MAX_OPTIONS) {
       questions[index].options.push("");
       refreshOneQuestion(index);
+      saveDraftToStorage();
     }
   });
 
-  // حذف اختيار
   card.querySelectorAll(".q-remove-option").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const optIndex = Number(e.target.dataset.index);
@@ -412,21 +489,20 @@ function attachQuestionCardEvents(card, index) {
         questions[index].correctAnswerIndex = 0;
       }
       refreshOneQuestion(index);
+      saveDraftToStorage();
     });
   });
 
-  // رفع صورة
   const imageInput = card.querySelector(".q-image-input");
   if (imageInput) imageInput.addEventListener("change", (e) => handleImageUpload(e, index));
 
-  // إزالة صورة
   const removeImageBtn = card.querySelector(".q-remove-image");
   if (removeImageBtn) removeImageBtn.addEventListener("click", () => {
     questions[index].imageUrl = "";
     refreshOneQuestion(index);
+    saveDraftToStorage();
   });
 
-  // حذف السؤال
   card.querySelector(".q-delete").addEventListener("click", () => {
     if (questions.length <= 1) {
       showFormMessage("لازم يكون فيه سؤال واحد على الأقل", "error");
@@ -436,29 +512,31 @@ function attachQuestionCardEvents(card, index) {
     questions.splice(index, 1);
     renderAllQuestions();
     updateSummary();
+    saveDraftToStorage();
   });
 
-  // تكرار السؤال
   card.querySelector(".q-duplicate").addEventListener("click", () => {
     const copy = JSON.parse(JSON.stringify(questions[index]));
     copy.qid = ++qidCounter;
     questions.splice(index + 1, 0, copy);
     renderAllQuestions();
     updateSummary();
+    saveDraftToStorage();
   });
 
-  // تحريك لأعلى / لأسفل
   const upBtn = card.querySelector(".q-move-up");
   if (upBtn) upBtn.addEventListener("click", () => {
     if (index === 0) return;
     [questions[index - 1], questions[index]] = [questions[index], questions[index - 1]];
     renderAllQuestions();
+    saveDraftToStorage();
   });
   const downBtn = card.querySelector(".q-move-down");
   if (downBtn) downBtn.addEventListener("click", () => {
     if (index === questions.length - 1) return;
     [questions[index + 1], questions[index]] = [questions[index], questions[index + 1]];
     renderAllQuestions();
+    saveDraftToStorage();
   });
 }
 
@@ -502,6 +580,7 @@ async function handleImageUpload(event, index) {
   } finally {
     questions[index].imageUploading = false;
     refreshOneQuestion(index);
+    saveDraftToStorage();
   }
 }
 
@@ -564,6 +643,7 @@ async function saveExam(status) {
 
     await addDoc(collection(db, "exams"), examDoc);
 
+    clearDraftStorage();
     showFormMessage(status === "published" ? "تم نشر الامتحان بنجاح ✅" : "تم حفظ المسودة ✅", "success");
     setTimeout(() => { window.location.href = "teacher-dashboard.html"; }, 1200);
 
