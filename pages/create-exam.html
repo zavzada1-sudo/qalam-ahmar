@@ -9,6 +9,7 @@
   <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/rtl.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -156,6 +157,18 @@
       </section>
 
     </main>
+  </div>
+  <!-- مودال عرض QR بعد النشر -->
+  <div id="publishQrModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2>🎉 تم نشر الامتحان</h2>
+      <p class="profile-label">الطلاب يقدروا يمسحوا الكود ده ويدخلوا الامتحان على طول</p>
+      <div id="qrCodeContainer" class="qr-code-box"></div>
+      <div style="display: flex; gap: 10px; margin-top: 16px;">
+        <button class="btn btn-primary btn-block" id="printFromModalBtn">🖶 طباعة الامتحان</button>
+        <button class="btn btn-outline btn-block" id="backToDashboardBtn">لوحة التحكم →</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="../js/teacher/create-exam.js"></script>

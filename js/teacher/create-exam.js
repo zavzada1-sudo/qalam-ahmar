@@ -714,17 +714,25 @@ async function saveExam(status) {
       }))
     };
 
+    let savedExamId = editingExamId;
+
     if (editingExamId) {
-      examDoc.qrToken = originalQrToken || generateQrToken(); // نحافظ على نفس رابط الـ QR
+      examDoc.qrToken = originalQrToken || generateQrToken();
       await updateDoc(doc(db, "exams", editingExamId), examDoc);
     } else {
       examDoc.qrToken = generateQrToken();
-      await addDoc(collection(db, "exams"), examDoc);
+      const newDocRef = await addDoc(collection(db, "exams"), examDoc);
+      savedExamId = newDocRef.id;
     }
 
     clearDraftStorage();
-    showFormMessage(status === "published" ? "تم حفظ التعديلات ونشر الامتحان ✅" : "تم حفظ المسودة ✅", "success");
-    setTimeout(() => { window.location.href = "teacher-dashboard.html"; }, 1200);
+
+    if (status === "published") {
+      showPublishQrModal(savedExamId);
+    } else {
+      showFormMessage("تم حفظ المسودة ✅", "success");
+      setTimeout(() => { window.location.href = "teacher-dashboard.html"; }, 1200);
+    }
 
   } catch (error) {
     console.error("Save exam error:", error);
@@ -761,3 +769,32 @@ logoutBtn.addEventListener("click", async () => {
     logoutBtn.disabled = false;
   }
 });
+
+// ============================================
+// مودال QR بعد النشر
+// ============================================
+
+function showPublishQrModal(examId) {
+  const modal = document.getElementById("publishQrModal");
+  const qrContainer = document.getElementById("qrCodeContainer");
+  qrContainer.innerHTML = "";
+
+  const examUrl = `${window.location.origin}/pages/student-exam.html?examId=${examId}`;
+
+  new QRCode(qrContainer, {
+    text: examUrl,
+    width: 220,
+    height: 220,
+    colorDark: "#2c3e50",
+    colorLight: "#ffffff"
+  });
+
+  document.getElementById("printFromModalBtn").onclick = () => {
+    window.open(`print-exam.html?examId=${examId}`, "_blank");
+  };
+  document.getElementById("backToDashboardBtn").onclick = () => {
+    window.location.href = "teacher-dashboard.html";
+  };
+
+  modal.classList.remove("hidden");
+}

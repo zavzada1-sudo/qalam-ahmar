@@ -103,11 +103,16 @@ async function loadTeacherExams(teacherId) {
       card.style.cursor = "pointer";
       card.innerHTML = `
         <button class="exam-delete-btn" title="حذف الامتحان">🗑️</button>
+
         <h3>${exam.title || "بدون عنوان"}</h3>
         <div class="exam-badges">
           <span class="badge badge-type">${translateExamType(exam.type)}</span>
           <span class="badge badge-status ${exam.status}">${translateStatus(exam.status)}</span>
         </div>
+        ${exam.status === "published"
+          ? `<button class="exam-print-btn btn btn-outline">🖶 طباعة</button>`
+          : ""
+        }
       `;
 
       // فتح الامتحان للتعديل
@@ -120,6 +125,15 @@ async function loadTeacherExams(teacherId) {
         e.stopPropagation();
         await deleteExam(examDoc.id, exam.title || "بدون عنوان", teacherId);
       });
+      // زرار الطباعة (بيظهر بس لو الامتحان منشور)
+      const printBtn = card.querySelector(".exam-print-btn");
+      if (printBtn) {
+        printBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          window.open(`print-exam.html?examId=${examDoc.id}`, "_blank");
+        });
+      }
+
 
       examsListEl.appendChild(card);
     });

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طباعة الامتحان</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <div id="loadingView" class="exam-loading">
+    <div class="loading-spinner"></div>
+    <p>جاري التحميل...</p>
+  </div>
+
+  <div id="errorView" class="exam-error hidden">
+    <div class="error-icon">⚠️</div>
+    <h2 id="errorTitle">حصلت مشكلة</h2>
+    <p id="errorMessage"></p>
+    <a href="teacher-dashboard.html" class="btn btn-primary">← الرجوع للوحة التحكم</a>
+  </div>
+
+  <div id="printView" class="print-page hidden">
+
+    <!-- شريط أدوات (يختفي وقت الطباعة) -->
+    <div class="print-toolbar no-print">
+      <a href="teacher-dashboard.html" class="btn btn-outline">← لوحة التحكم</a>
+      <button class="btn btn-primary" id="printBtn">🖶 طباعة / حفظ PDF</button>
+    </div>
+
+    <!-- رأس الورقة -->
+    <div class="print-header">
+      <div>
+        <h1 id="printExamTitle">اسم الامتحان</h1>
+        <p id="printExamMeta"></p>
+        <div class="print-student-fields">
+          <span>الاسم: ____________________</span>
+          <span>الكود: ____________________</span>
+        </div>
+      </div>
+      <div class="print-qr-box">
+        <div id="qrCodeContainer"></div>
+        <p>امسح الكود لحل الامتحان أونلاين</p>
+      </div>
+    </div>
+
+    <hr class="print-divider">
+
+    <!-- الأسئلة -->
+    <div id="printQuestionsList"></div>
+
+    <!-- دليل الإجابات (للمدرس بس، بيختفي وقت الطباعة) -->
+    <div class="answer-key no-print" id="answerKeySection">
+      <h3>🔑 دليل الإجابات (للمدرس فقط، مش بيتطبع)</h3>
+      <div id="answerKeyList"></div>
+    </div>
+
+  </div>
+
+  <script type="module" src="../js/teacher/print-exam.js"></script>
+</body>
+</html>
