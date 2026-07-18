@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - حسابي</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="teacher-dashboard.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>لوحة التحكم</span>
+        </a>
+        <a href="create-exam.html" class="nav-item">
+          <span class="nav-icon">✦</span>
+          <span>إنشاء امتحان</span>
+        </a>
+        <a href="classes.html" class="nav-item">
+          <span class="nav-icon">▦</span>
+          <span>الفصول والطلاب</span>
+        </a>
+        <a href="teacher-profile.html" class="nav-item active">
+          <span class="nav-icon">👤</span>
+          <span>حسابي</span>
+        </a>
+        <button class="nav-item" type="button">
+          <span class="nav-icon">✓</span>
+          <span>الحضور</span>
+        </button>
+        <button class="nav-item" type="button">
+          <span class="nav-icon">▤</span>
+          <span>التقارير</span>
+        </button>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <!-- الشريط العلوي -->
+      <header class="dashboard-topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>حسابي</h1>
+            <p>بياناتك وإدارة حسابات طلابك</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- ======== بياناتي ======== -->
+      <section>
+        <div class="section-header">
+          <h2>بياناتي</h2>
+        </div>
+
+        <div class="profile-card">
+          <div class="profile-head">
+            <div class="profile-avatar" id="profileAvatar">؟</div>
+            <div>
+              <div class="profile-value" id="profileName" style="font-size: 1.1rem;">—</div>
+              <div class="profile-label" id="profileEmail">—</div>
+            </div>
+          </div>
+
+          <div class="profile-divider"></div>
+
+          <div class="profile-row-item">
+            <span class="profile-label">الـ ID الخاص بك (الطلاب بيستخدموه عشان يلاقوك)</span>
+            <span class="profile-code">
+              <strong id="profileCode">—</strong>
+              <button class="gd-btn gd-btn-primary" id="copyCodeBtn" type="button">نسخ</button>
+            </span>
+          </div>
+
+          <div class="profile-row-item">
+            <span class="profile-label">الاشتراك المتبقي</span>
+            <span class="profile-value" id="profileSubscription">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== طلابي ======== -->
+      <section>
+        <div class="section-header">
+          <h2>طلابي (<span id="studentsCount">0</span>)</h2>
+        </div>
+
+        <input type="search" id="studentSearch" class="gd-search"
+               placeholder="ابحث باسم الطالب أو الكود أو الإيميل..." autocomplete="off">
+
+        <div id="studentsMessage" class="gd-message"></div>
+
+        <div id="studentsList" class="gd-list">
+          <p class="loading-text">جاري التحميل...</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="../js/teacher/teacher-profile.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
