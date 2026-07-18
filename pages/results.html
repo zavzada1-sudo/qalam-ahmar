@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - النتيجة</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <!-- شاشة "جاري التصحيح" -->
+  <div id="gradingView" class="exam-loading">
+    <div class="loading-spinner"></div>
+    <h2>جاري تصحيح إجاباتك</h2>
+    <p>ثواني بس...</p>
+  </div>
+
+  <!-- شاشة الخطأ -->
+  <div id="errorView" class="exam-error hidden">
+    <div class="error-icon">⚠️</div>
+    <h2 id="errorTitle">حصلت مشكلة</h2>
+    <p id="errorMessage"></p>
+    <a href="student-home.html" class="btn btn-primary">← الرجوع للرئيسية</a>
+  </div>
+
+  <!-- شاشة النتيجة -->
+  <div id="resultsView" class="exam-container hidden">
+
+    <!-- الملخص العلوي -->
+    <div class="result-summary-card">
+      <h1 id="examTitle">اسم الامتحان</h1>
+
+      <div class="result-score-circle" id="scoreCircle">
+        <span class="result-score-value" id="scoreValue">0</span>
+        <span class="result-score-of">من <span id="scoreTotal">0</span></span>
+      </div>
+
+      <div class="result-percentage" id="scorePercentage">0%</div>
+      <div class="result-verdict" id="scoreVerdict">—</div>
+
+      <div class="result-stats">
+        <div class="result-stat">
+          <span class="stat-icon">✅</span>
+          <span class="stat-label">صح</span>
+          <span class="stat-value" id="correctCount">0</span>
+        </div>
+        <div class="result-stat">
+          <span class="stat-icon">❌</span>
+          <span class="stat-label">غلط</span>
+          <span class="stat-value" id="wrongCount">0</span>
+        </div>
+        <div class="result-stat">
+          <span class="stat-icon">➖</span>
+          <span class="stat-label">مش متجاوب</span>
+          <span class="stat-value" id="unansweredCount">0</span>
+        </div>
+        <div class="result-stat">
+          <span class="stat-icon">⏱️</span>
+          <span class="stat-label">الوقت المستغرق</span>
+          <span class="stat-value" id="timeSpent">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- مراجعة الإجابات -->
+    <div class="section-header">
+      <h2>مراجعة الإجابات</h2>
+    </div>
+
+    <div id="reviewList"></div>
+
+    <!-- زرار الرجوع -->
+    <div style="margin-top: 24px;">
+      <a href="student-home.html" class="btn btn-outline btn-block">← الرجوع للرئيسية</a>
+    </div>
+  </div>
+
+  <script type="module" src="../js/student/results.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>

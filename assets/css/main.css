@@ -928,3 +928,81 @@ button { font-family: inherit; cursor: pointer; }
 
 /* مودال الوقت خلص */
 .time-up-icon { font-size: 3rem; text-align: center; margin-bottom: 10px; }
+
+
+/* ============================================
+   صفحة النتيجة (Results)
+   ============================================ */
+.result-summary-card { background: #fff; border-radius: 14px; padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08); text-align: center; margin-bottom: 20px; }
+.result-summary-card h1 { margin: 0 0 20px; color: var(--primary, #c0392b); font-size: 1.3rem; }
+
+.result-score-circle { width: 140px; height: 140px; border-radius: 50%;
+  border: 8px solid var(--primary, #c0392b);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin: 0 auto 14px; background: #fff; }
+.result-score-value { font-size: 2.4rem; font-weight: 700; color: #2c3e50; line-height: 1; }
+.result-score-of { font-size: .8rem; color: #999; margin-top: 4px; }
+
+.result-percentage { font-size: 1.6rem; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
+.result-verdict { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
+
+.result-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.result-stat { background: #faf7f7; padding: 12px 10px; border-radius: 10px;
+  display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.result-stat .stat-icon { font-size: 1.3rem; }
+.result-stat .stat-label { font-size: .75rem; color: #999; }
+.result-stat .stat-value { font-size: 1rem; font-weight: 700; color: #2c3e50; }
+
+@media (min-width: 500px) {
+  .result-stats { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* كارت مراجعة السؤال */
+.review-card { background: #fff; border-radius: 12px; padding: 18px;
+  margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  border-right: 5px solid #ccc; }
+.review-card.correct { border-right-color: #27ae60; }
+.review-card.wrong { border-right-color: #c0392b; }
+.review-card.unanswered { border-right-color: #999; }
+
+.review-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.review-num { font-size: .85rem; font-weight: 600; color: #666; }
+.review-status { font-size: .9rem; font-weight: 700; }
+
+.review-question { color: #2c3e50; line-height: 1.5; margin-bottom: 12px;
+  white-space: pre-wrap; word-wrap: break-word; }
+.review-image { max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 12px; }
+
+.review-options { display: flex; flex-direction: column; gap: 6px; }
+.review-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid #eee; border-radius: 8px; font-size: .92rem; flex-wrap: wrap; }
+.review-option.correct { background: #eafaf1; border-color: #a3e4c0; }
+.review-option.wrong { background: #fdecea; border-color: #f5b7b1; }
+.review-option.picked-correct { background: #eafaf1; border-color: #a3e4c0; }
+.review-option-label { width: 26px; height: 26px; border-radius: 50%; background: #f5f5f5;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+.review-option.correct .review-option-label,
+.review-option.picked-correct .review-option-label { background: #27ae60; color: #fff; }
+.review-option.wrong .review-option-label { background: #c0392b; color: #fff; }
+.review-option-text { flex: 1; }
+.review-mark { font-size: .78rem; color: #27ae60; font-weight: 600; }
+.review-mark.wrong { color: #c0392b; }
+
+.review-comment { margin-top: 12px; padding: 10px 12px; background: #fff8e6;
+  border-radius: 8px; font-size: .88rem; line-height: 1.5; }
+.review-resource { margin-top: 8px; }
+.review-resource a { color: var(--primary, #c0392b); font-size: .9rem; font-weight: 600; text-decoration: none; }
+.review-resource a:hover { text-decoration: underline; }
+
+
+
+/* زرار حذف الامتحان */
+.exam-card { position: relative; }
+.exam-delete-btn {
+  position: absolute; top: 10px; left: 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 1rem; padding: 5px 7px; border-radius: 6px;
+  opacity: .5; transition: all .15s;
+}
+.exam-delete-btn:hover { opacity: 1; background: #fdecea; }

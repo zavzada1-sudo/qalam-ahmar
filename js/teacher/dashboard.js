@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs }
+import { doc, getDoc, setDoc, updateDoc,deleteDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 // عناصر الصفحة
@@ -102,15 +102,25 @@ async function loadTeacherExams(teacherId) {
       card.className = "exam-card";
       card.style.cursor = "pointer";
       card.innerHTML = `
+        <button class="exam-delete-btn" title="حذف الامتحان">🗑️</button>
         <h3>${exam.title || "بدون عنوان"}</h3>
         <div class="exam-badges">
           <span class="badge badge-type">${translateExamType(exam.type)}</span>
           <span class="badge badge-status ${exam.status}">${translateStatus(exam.status)}</span>
         </div>
       `;
+
+      // فتح الامتحان للتعديل
       card.addEventListener("click", () => {
         window.location.href = `create-exam.html?examId=${examDoc.id}`;
       });
+
+      // حذف الامتحان (مع منع فتح صفحة التعديل)
+      card.querySelector(".exam-delete-btn").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await deleteExam(examDoc.id, exam.title || "بدون عنوان", teacherId);
+      });
+
       examsListEl.appendChild(card);
     });
 
@@ -154,6 +164,39 @@ logoutBtn.addEventListener("click", async () => {
     logoutBtn.disabled = false;
   }
 });
+// ------- حذف امتحان -------
+async function deleteExam(examId, examTitle, teacherId) {
+  // نشوف الأول لو فيه طلاب سلّموا الامتحان ده
+  let submissionsCount = 0;
+  try {
+    const subsSnap = await getDocs(query(
+      collection(db, "submissions"),
+      where("examId", "==", examId)
+    ));
+    submissionsCount = subsSnap.size;
+  } catch (error) {
+    console.error("Check submissions error:", error);
+  }
+
+  // رسالة تحذير حسب الحالة
+  let confirmMessage = `متأكد إنك عايز تمسح "${examTitle}"؟\nمش هتقدر ترجّعه تاني.`;
+  if (submissionsCount > 0) {
+    confirmMessage =
+      `⚠️ تحذير: فيه ${submissionsCount} طالب سلّموا الامتحان ده بالفعل.\n\n` +
+      `لو مسحته، نتايجهم هتفضل موجودة بس من غير أسئلة الامتحان (مش هيقدروا يراجعوا إجاباتهم).\n\n` +
+      `متأكد إنك عايز تمسح "${examTitle}"؟`;
+  }
+
+  if (!confirm(confirmMessage)) return;
+
+  try {
+    await deleteDoc(doc(db, "exams", examId));
+    await loadTeacherExams(teacherId); // نعيد تحميل القايمة
+  } catch (error) {
+    console.error("Delete exam error:", error);
+    alert("حصلت مشكلة في الحذف، حاول تاني");
+  }
+}
 
 
 // ============================================
