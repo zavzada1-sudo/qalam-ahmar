@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - الرئيسية</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="student-home.html" class="nav-item active">
+          <span class="nav-icon">⌂</span>
+          <span>الرئيسية</span>
+        </a>
+        <a href="student-join.html" class="nav-item">
+          <span class="nav-icon">＋</span>
+          <span>الانضمام لمدرس</span>
+        </a>
+        <button class="nav-item" type="button">
+          <span class="nav-icon">✦</span>
+          <span>امتحاناتي</span>
+        </button>
+        <button class="nav-item" type="button">
+          <span class="nav-icon">▤</span>
+          <span>نتائجي</span>
+        </button>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>👋 أهلاً <span id="welcomeName">بك</span></h1>
+            <p>دي موادك والمدرسين اللي منضم ليهم</p>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="section-header">
+          <h2>موادي</h2>
+          <a href="student-join.html" class="btn btn-primary">＋ الانضمام لمدرس</a>
+        </div>
+        <div id="groupsList" class="cards-grid">
+          <p class="loading-text">جاري التحميل...</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="../js/student/student-home.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
