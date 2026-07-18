@@ -1050,3 +1050,25 @@ button { font-family: inherit; cursor: pointer; }
   .print-page { padding: 0; max-width: 100%; }
   .print-question { break-inside: avoid; }
 }
+
+/* ============================================
+   تبويبات صفحة المجموعة
+   ============================================ */
+.tabs-bar { display: flex; gap: 6px; border-bottom: 2px solid #eee;
+  margin-bottom: 20px; overflow-x: auto; }
+.tab-btn { background: none; border: none; padding: 12px 18px; font-size: 1rem;
+  font-weight: 600; color: #999; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit;
+  white-space: nowrap; transition: all .15s; }
+.tab-btn:hover { color: #444; }
+.tab-btn.active { color: var(--primary, #c0392b); border-bottom-color: var(--primary, #c0392b); }
+.tab-count { background: #eee; color: #666; padding: 2px 8px; border-radius: 10px;
+  font-size: .78rem; font-weight: 700; }
+.tab-btn.active .tab-count { background: var(--primary, #c0392b); color: #fff; }
+
+.card-meta { font-size: .82rem; color: #999; margin: 4px 0 10px; }
+.deadline-hint { display: block; font-size: .78rem; color: #999; margin-top: 6px; }
+
+/* Breadcrumb link */
+.breadcrumb-item[href] { color: var(--primary, #c0392b); text-decoration: none; }
+.breadcrumb-item[href]:hover { text-decoration: underline; }

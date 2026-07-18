@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - المجموعة</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="student-home.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>الرئيسية</span>
+        </a>
+        <a href="student-join.html" class="nav-item">
+          <span class="nav-icon">＋</span>
+          <span>الانضمام لمدرس</span>
+        </a>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1 id="groupTitle">جاري التحميل...</h1>
+            <p id="groupSubtitle"></p>
+          </div>
+        </div>
+      </header>
+
+      <div class="breadcrumb">
+        <a href="student-home.html" class="breadcrumb-item">الرئيسية</a>
+        <span class="breadcrumb-separator">›</span>
+        <span class="breadcrumb-item active" id="crumbGroup">المجموعة</span>
+      </div>
+
+      <!-- التبويبات -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" data-tab="exams">
+          📝 <span>الامتحانات</span>
+          <span class="tab-count" id="examsTabCount">0</span>
+        </button>
+        <button class="tab-btn" data-tab="assignments">
+          📚 <span>الواجبات</span>
+          <span class="tab-count" id="assignmentsTabCount">0</span>
+        </button>
+      </div>
+
+      <!-- محتوى تبويب الامتحانات -->
+      <section id="examsTab" class="tab-content">
+        <div id="examsList" class="cards-grid">
+          <p class="loading-text">جاري التحميل...</p>
+        </div>
+      </section>
+
+      <!-- محتوى تبويب الواجبات -->
+      <section id="assignmentsTab" class="tab-content hidden">
+        <div id="assignmentsList" class="cards-grid">
+          <p class="loading-text">جاري التحميل...</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="../js/student/student-group.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>

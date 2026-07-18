@@ -101,12 +101,21 @@ async function loadMyGroups() {
 
       const card = document.createElement("div");
       card.className = "entity-card";
+      card.style.cursor = group.status === "member" ? "pointer" : "default";
       card.innerHTML = `
         <div class="entity-card-icon">👥</div>
         <h3>${escapeHtml(group.groupName)}</h3>
         <p>مع ${escapeHtml(teacherName)}${gradeName ? " · " + escapeHtml(gradeName) : ""}</p>
         ${statusHtml}
       `;
+
+      // بس المنضمين يقدروا يفتحوا الصفحة
+      if (group.status === "member") {
+        card.addEventListener("click", () => {
+          window.location.href = `student-group.html?groupId=${group.id}`;
+        });
+      }
+
       groupsList.appendChild(card);
     });
 
