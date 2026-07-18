@@ -11,7 +11,7 @@ import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs }
 // ============================================
 // ⚠️ ضع الـ API Key بتاعك من imgbb.com هنا
 // ============================================
-const IMGBB_API_KEY = "ضع_المفتاح_هنا";
+const IMGBB_API_KEY = "6ed0a8bea361b328173b3a4a4a10d10e";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
