@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, setDoc } 
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { reserveStudentCode } from "../shared/student-code.js";
 
 let selectedRole = "teacher"; // القيمة الافتراضية
 
@@ -40,12 +41,6 @@ function setupPasswordToggle(toggleBtnId, inputId) {
 
 setupPasswordToggle("togglePassword", "password");
 setupPasswordToggle("toggleConfirmPassword", "confirmPassword");
-
-// ------- دالة لتوليد Student ID عشوائي وفريد -------
-function generateStudentId() {
-  const randomNum = Math.floor(1000 + Math.random() * 9000); // رقم من 4 خانات
-  return `STD${randomNum}`;
-}
 
 // ------- دالة مساعدة لعرض الأخطاء -------
 const errorEl = document.getElementById("signupError");
@@ -102,9 +97,11 @@ signupForm.addEventListener("submit", async (e) => {
       createdAt: new Date().toISOString()
     };
 
-    // لو الحساب طالب، نضيف Student ID تلقائي
+    // لو الحساب طالب، نحجزله كود فريد (حرفين + 3 أرقام، مثال: TK492)
+    // بيتم بعد إنشاء الحساب مباشرةً لأن الحجز محتاج المستخدم يكون مسجل دخول
     if (selectedRole === "student") {
-      userData.studentId = generateStudentId();
+      signupBtn.textContent = "جاري تجهيز كود الطالب...";
+      userData.studentId = await reserveStudentCode(credential.user.uid);
     }
 
     await setDoc(doc(db, "users", credential.user.uid), userData);
@@ -113,7 +110,8 @@ signupForm.addEventListener("submit", async (e) => {
     if (selectedRole === "teacher") {
       window.location.href = "teacher-dashboard.html";
     } else {
-      window.location.href = "student-exam.html";
+      // الطالب الجديد لازم ينضم لمدرس الأول
+      window.location.href = "student-join.html";
     }
 
   } catch (error) {
