@@ -24,6 +24,10 @@ const examsTabCount = document.getElementById("examsTabCount");
 const assignmentsTabCount = document.getElementById("assignmentsTabCount");
 const examsTab = document.getElementById("examsTab");
 const assignmentsTab = document.getElementById("assignmentsTab");
+const materialsList = document.getElementById("materialsList");
+const materialsTabCount = document.getElementById("materialsTabCount");
+const materialsTab = document.getElementById("materialsTab");
+
 
 // ------- الحالة -------
 let currentStudentId = null;
@@ -59,6 +63,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     const tab = btn.dataset.tab;
     examsTab.classList.toggle("hidden", tab !== "exams");
     assignmentsTab.classList.toggle("hidden", tab !== "assignments");
+    materialsTab.classList.toggle("hidden", tab !== "materials");
   });
 });
 
@@ -109,6 +114,7 @@ onAuthStateChanged(auth, async (user) => {
     crumbGroup.textContent = group.groupName;
 
     await loadExamsAndAssignments();
+    await loadMaterials();
 
   } catch (error) {
     console.error("Load group page error:", error);
@@ -266,6 +272,57 @@ function buildCard(exam, submission) {
   }
 
   return card;
+}
+// ============================================
+// المواد التعليمية
+// ============================================
+
+const MATERIAL_ICONS = { pdf: "📄", doc: "📝", video: "🎥", link: "🔗" };
+
+async function loadMaterials() {
+  try {
+    const snap = await getDocs(query(
+      collection(db, "materials"),
+      where("groupIds", "array-contains", groupId)
+    ));
+
+    const materials = [];
+    snap.forEach((m) => materials.push({ id: m.id, ...m.data() }));
+    materials.sort((a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
+
+    materialsTabCount.textContent = materials.length;
+
+    if (materials.length === 0) {
+      materialsList.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-icon">📚</div>
+          <h3>مفيش مواد متاحة</h3>
+          <p>ارجع بعدين لما مدرسك يضيف ملازم أو ملفات.</p>
+        </div>
+      `;
+      return;
+    }
+
+    materialsList.innerHTML = "";
+    materials.forEach((material) => {
+      const card = document.createElement("div");
+      card.className = "entity-card";
+      card.innerHTML = `
+        <div class="entity-card-icon">${MATERIAL_ICONS[material.fileType] || "📄"}</div>
+        <h3>${escapeHtml(material.title)}</h3>
+        ${material.description ? `<p class="card-meta">${escapeHtml(material.description)}</p>` : ""}
+        <a href="${escapeHtml(material.fileUrl)}" target="_blank" rel="noopener noreferrer"
+           class="btn btn-primary btn-block" style="margin-top: 12px;">فتح / تحميل ↗</a>
+      `;
+      materialsList.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error("Load materials error:", error);
+    materialsList.innerHTML = `<p class="message error">تعذر تحميل المواد</p>`;
+  }
 }
 
 // ------- تسجيل الخروج -------

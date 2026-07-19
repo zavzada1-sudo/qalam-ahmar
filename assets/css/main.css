@@ -1072,3 +1072,22 @@ button { font-family: inherit; cursor: pointer; }
 /* Breadcrumb link */
 .breadcrumb-item[href] { color: var(--primary, #c0392b); text-decoration: none; }
 .breadcrumb-item[href]:hover { text-decoration: underline; }
+
+
+
+/* ============================================
+   المواد التعليمية
+   ============================================ */
+.modal-box-wide { max-width: 560px; max-height: 88vh; overflow-y: auto; }
+
+.material-card { position: relative; }
+.material-card-actions { position: absolute; top: 10px; left: 10px; display: flex; gap: 5px; }
+.material-card-actions .gd-btn { padding: 4px 8px; font-size: .78rem; }
+
+/* مكان الرفع المباشر (محجوز لحد ما نفعّل Storage) */
+.upload-placeholder { opacity: .55; }
+.upload-locked { display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 14px 16px; border: 1px dashed #ccc; border-radius: 10px;
+  background: #fafafa; font-size: .9rem; color: #777; }
+.upload-locked-badge { background: #eee; color: #888; padding: 3px 10px;
+  border-radius: 20px; font-size: .75rem; font-weight: 700; }
