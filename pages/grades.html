@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>عرض النتائج - قلم أحمر</title>
+  <meta name="theme-color" content="#c0392b" />
+  <link rel="manifest" href="../manifest.json" />
+
+  <!-- ملفات التصميم العامة للمشروع (نفس نظام التصميم في كل الصفحات) -->
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/rtl.css" />
+
+  <!-- تنسيقات خاصة بهذه الصفحة فقط (إحصائيات، شارات الحالة، صف الطالب) -->
+  <style>
+    .grades-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .exam-title-block {
+      flex: 1;
+    }
+
+    .exam-title-block h1 {
+      margin: 0 0 4px;
+      font-size: 1.4rem;
+    }
+
+    .exam-title-block p {
+      margin: 0;
+      color: var(--text-muted, #6b7280);
+      font-size: 0.9rem;
+    }
+
+    /* شبكة الإحصائيات العامة */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: var(--radius, 12px);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary, #c0392b);
+    }
+
+    .stat-card .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted, #6b7280);
+      margin-top: 4px;
+    }
+
+    /* شريط البحث والترتيب */
+    .grades-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .grades-controls input,
+    .grades-controls select {
+      padding: 10px 14px;
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: var(--radius, 10px);
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    .grades-controls input {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    /* صف الطالب داخل القائمة */
+    .grade-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+
+    .grade-row-main {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .grade-row-name {
+      font-weight: 600;
+    }
+
+    .grade-row-code {
+      font-size: 0.8rem;
+      color: var(--text-muted, #6b7280);
+      margin-top: 2px;
+    }
+
+    .grade-row-status {
+      min-width: 110px;
+    }
+
+    .grade-row-score {
+      min-width: 130px;
+      font-weight: 600;
+    }
+
+    .grade-row-time {
+      min-width: 90px;
+      color: var(--text-muted, #6b7280);
+      font-size: 0.85rem;
+    }
+
+    /* شارات الحالة */
+    .grade-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .grade-badge-success {
+      background: #e7f7ee;
+      color: #1e8a4c;
+    }
+
+    .grade-badge-warning {
+      background: #fff6e5;
+      color: #b8860b;
+    }
+
+    .grade-badge-muted {
+      background: #f2f2f2;
+      color: #888;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #loadingState,
+    #errorState {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted, #6b7280);
+    }
+
+    #errorState {
+      color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+
+    <!-- ===== رأس الصفحة: زرار الرجوع + عنوان الامتحان ===== -->
+    <div class="grades-header">
+      <button id="backBtn" class="gd-btn" type="button" aria-label="الرجوع للوحة التحكم">
+        ← رجوع
+      </button>
+      <div class="exam-title-block">
+        <h1 id="examTitle">جاري التحميل...</h1>
+        <p id="examMeta"></p>
+      </div>
+    </div>
+
+    <!-- ===== حالة التحميل ===== -->
+    <div id="loadingState">
+      جاري تحميل النتائج...
+    </div>
+
+    <!-- ===== حالة الخطأ ===== -->
+    <div id="errorState" class="hidden"></div>
+
+    <!-- ===== المحتوى الرئيسي ===== -->
+    <div id="contentWrapper" class="hidden">
+
+      <!-- إحصائيات عامة -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statSubmitted">0 / 0</div>
+          <div class="stat-label">عدد المسلّمين</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statAverage">—</div>
+          <div class="stat-label">متوسط النسبة</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statHighest">—</div>
+          <div class="stat-label">أعلى نسبة</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statLowest">—</div>
+          <div class="stat-label">أقل نسبة</div>
+        </div>
+      </div>
+
+      <!-- بحث وترتيب -->
+      <div class="grades-controls">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="ابحث باسم الطالب أو كوده..."
+          autocomplete="off"
+        />
+        <select id="sortSelect">
+          <option value="score_desc">الأعلى درجة أولاً</option>
+          <option value="score_asc">الأقل درجة أولاً</option>
+          <option value="name">ترتيب أبجدي بالاسم</option>
+        </select>
+      </div>
+
+      <!-- قائمة الطلاب -->
+      <div id="studentsList"></div>
+
+      <!-- حالة فارغة (لا يوجد طلاب مطابقين للبحث) -->
+      <div id="emptyState" class="empty-state hidden">
+        <p>مفيش طلاب مطابقين لبحثك.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Firebase SDK (compat) ===== -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <!-- إعدادات Firebase الخاصة بالمشروع -->
+  <script src="../firebase-config.js"></script>
+
+  <!-- منطق الصفحة -->
+  <script src="../js/teacher/grades.js"></script>
+</body>
+</html>

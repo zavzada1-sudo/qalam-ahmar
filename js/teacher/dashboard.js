@@ -102,19 +102,20 @@ async function loadTeacherExams(teacherId) {
       card.className = "exam-card";
       card.style.cursor = "pointer";
       card.innerHTML = `
-        <div class="exam-card-actions">
-          ${exam.status === "published"
-            ? `<button class="exam-print-btn" title="طباعة الامتحان">🖶</button>`
-            : ""
-          }
-          <button class="exam-delete-btn" title="حذف الامتحان">🗑️</button>
-        </div>
-        <h3>${exam.title || "بدون عنوان"}</h3>
-        <div class="exam-badges">
-          <span class="badge badge-type">${translateExamType(exam.type)}</span>
-          <span class="badge badge-status ${exam.status}">${translateStatus(exam.status)}</span>
-        </div>
-      `;
+  <div class="exam-card-actions">
+    ${exam.status === "published"
+      ? `<button class="exam-grades-btn" title="عرض النتائج">📊</button>
+         <button class="exam-print-btn" title="طباعة الامتحان">🖶</button>`
+      : ""
+    }
+    <button class="exam-delete-btn" title="حذف الامتحان">🗑️</button>
+  </div>
+  <h3>${exam.title || "بدون عنوان"}</h3>
+  <div class="exam-badges">
+    <span class="badge badge-type">${translateExamType(exam.type)}</span>
+    <span class="badge badge-status ${exam.status}">${translateStatus(exam.status)}</span>
+  </div>
+`;
 
       // فتح الامتحان للتعديل
       card.addEventListener("click", () => {
@@ -132,6 +133,15 @@ async function loadTeacherExams(teacherId) {
         printBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           window.open(`print-exam.html?examId=${examDoc.id}`, "_blank");
+        });
+      }
+
+      // زرار النتائج (بيظهر بس لو الامتحان منشور)
+      const gradesBtn = card.querySelector(".exam-grades-btn");
+      if (gradesBtn) {
+        gradesBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          window.location.href = `grades.html?examId=${examDoc.id}`;
         });
       }
 
