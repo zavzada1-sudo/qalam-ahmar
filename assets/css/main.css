@@ -998,14 +998,19 @@ button { font-family: inherit; cursor: pointer; }
 
 
 /* زرار حذف الامتحان */
+/* أزرار كارت الامتحان (طباعة + حذف) */
 .exam-card { position: relative; }
-.exam-delete-btn {
+.exam-card-actions {
   position: absolute; top: 10px; left: 10px;
+  display: flex; gap: 4px;
+}
+.exam-delete-btn, .exam-print-btn {
   background: none; border: none; cursor: pointer;
   font-size: 1rem; padding: 5px 7px; border-radius: 6px;
-  opacity: .5; transition: all .15s;
+  opacity: .5; transition: all .15s; line-height: 1;
 }
 .exam-delete-btn:hover { opacity: 1; background: #fdecea; }
+.exam-print-btn:hover { opacity: 1; background: #eef4ff; }
 
 
 /* ============================================

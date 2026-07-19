@@ -102,17 +102,18 @@ async function loadTeacherExams(teacherId) {
       card.className = "exam-card";
       card.style.cursor = "pointer";
       card.innerHTML = `
-        <button class="exam-delete-btn" title="حذف الامتحان">🗑️</button>
-
+        <div class="exam-card-actions">
+          ${exam.status === "published"
+            ? `<button class="exam-print-btn" title="طباعة الامتحان">🖶</button>`
+            : ""
+          }
+          <button class="exam-delete-btn" title="حذف الامتحان">🗑️</button>
+        </div>
         <h3>${exam.title || "بدون عنوان"}</h3>
         <div class="exam-badges">
           <span class="badge badge-type">${translateExamType(exam.type)}</span>
           <span class="badge badge-status ${exam.status}">${translateStatus(exam.status)}</span>
         </div>
-        ${exam.status === "published"
-          ? `<button class="exam-print-btn btn btn-outline">🖶 طباعة</button>`
-          : ""
-        }
       `;
 
       // فتح الامتحان للتعديل
