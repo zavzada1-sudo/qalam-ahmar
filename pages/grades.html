@@ -3,249 +3,255 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>عرض النتائج - قلم أحمر</title>
+  <title>نتائج الامتحان - قلم أحمر</title>
   <meta name="theme-color" content="#c0392b" />
   <link rel="manifest" href="../manifest.json" />
 
-  <!-- ملفات التصميم العامة للمشروع (نفس نظام التصميم في كل الصفحات) -->
+  <!-- نظام التصميم الموحّد -->
   <link rel="stylesheet" href="../assets/css/main.css" />
   <link rel="stylesheet" href="../assets/css/rtl.css" />
-
-  <!-- تنسيقات خاصة بهذه الصفحة فقط (إحصائيات، شارات الحالة، صف الطالب) -->
-  <style>
-    .grades-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .exam-title-block {
-      flex: 1;
-    }
-
-    .exam-title-block h1 {
-      margin: 0 0 4px;
-      font-size: 1.4rem;
-    }
-
-    .exam-title-block p {
-      margin: 0;
-      color: var(--text-muted, #6b7280);
-      font-size: 0.9rem;
-    }
-
-    /* شبكة الإحصائيات العامة */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
-    .stat-card {
-      background: var(--surface, #fff);
-      border: 1px solid var(--border, #e5e7eb);
-      border-radius: var(--radius, 12px);
-      padding: 16px;
-      text-align: center;
-    }
-
-    .stat-card .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary, #c0392b);
-    }
-
-    .stat-card .stat-label {
-      font-size: 0.8rem;
-      color: var(--text-muted, #6b7280);
-      margin-top: 4px;
-    }
-
-    /* شريط البحث والترتيب */
-    .grades-controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .grades-controls input,
-    .grades-controls select {
-      padding: 10px 14px;
-      border: 1px solid var(--border, #e5e7eb);
-      border-radius: var(--radius, 10px);
-      font-family: inherit;
-      font-size: 0.9rem;
-    }
-
-    .grades-controls input {
-      flex: 1;
-      min-width: 180px;
-    }
-
-    /* صف الطالب داخل القائمة */
-    .grade-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      padding: 14px 16px;
-      margin-bottom: 10px;
-    }
-
-    .grade-row-main {
-      flex: 1;
-      min-width: 140px;
-    }
-
-    .grade-row-name {
-      font-weight: 600;
-    }
-
-    .grade-row-code {
-      font-size: 0.8rem;
-      color: var(--text-muted, #6b7280);
-      margin-top: 2px;
-    }
-
-    .grade-row-status {
-      min-width: 110px;
-    }
-
-    .grade-row-score {
-      min-width: 130px;
-      font-weight: 600;
-    }
-
-    .grade-row-time {
-      min-width: 90px;
-      color: var(--text-muted, #6b7280);
-      font-size: 0.85rem;
-    }
-
-    /* شارات الحالة */
-    .grade-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .grade-badge-success {
-      background: #e7f7ee;
-      color: #1e8a4c;
-    }
-
-    .grade-badge-warning {
-      background: #fff6e5;
-      color: #b8860b;
-    }
-
-    .grade-badge-muted {
-      background: #f2f2f2;
-      color: #888;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    #loadingState,
-    #errorState {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-muted, #6b7280);
-    }
-
-    #errorState {
-      color: #c0392b;
-    }
-  </style>
 </head>
 <body>
-  <div class="page-container">
 
-    <!-- ===== رأس الصفحة: زرار الرجوع + عنوان الامتحان ===== -->
-    <div class="grades-header">
-      <button id="backBtn" class="gd-btn" type="button" aria-label="الرجوع للوحة التحكم">
-        ← رجوع
-      </button>
-      <div class="exam-title-block">
-        <h1 id="examTitle">جاري التحميل...</h1>
-        <p id="examMeta"></p>
-      </div>
+  <div class="grades-page">
+
+    <!-- ===== مسار التنقل ===== -->
+    <div class="breadcrumb">
+      <a href="teacher-dashboard.html" class="breadcrumb-item">لوحة التحكم</a>
+      <span class="breadcrumb-separator">›</span>
+      <span class="breadcrumb-item active">النتائج</span>
     </div>
 
     <!-- ===== حالة التحميل ===== -->
-    <div id="loadingState">
-      جاري تحميل النتائج...
+    <div id="loadingState" class="exam-loading">
+      <div class="loading-spinner"></div>
+      <p>بنحمّل النتايج...</p>
     </div>
 
     <!-- ===== حالة الخطأ ===== -->
-    <div id="errorState" class="hidden"></div>
+    <div id="errorState" class="exam-error hidden">
+      <div class="error-icon">⚠️</div>
+      <h3 id="errorText"></h3>
+      <a href="teacher-dashboard.html" class="btn btn-primary">رجوع للوحة التحكم</a>
+    </div>
 
-    <!-- ===== المحتوى الرئيسي ===== -->
+    <!-- ===== المحتوى ===== -->
     <div id="contentWrapper" class="hidden">
 
-      <!-- إحصائيات عامة -->
+      <!-- رأس الصفحة -->
+      <div class="grades-header">
+        <div>
+          <h1 id="examTitle"></h1>
+          <p id="examMeta"></p>
+        </div>
+        <button id="exportBtn" class="btn btn-outline" type="button">
+          ⬇ تصدير CSV
+        </button>
+      </div>
+
+      <!-- كروت الإحصائيات (نفس كروت لوحة التحكم) -->
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="statSubmitted">0 / 0</div>
-          <div class="stat-label">عدد المسلّمين</div>
+        <div class="stat-card red">
+          <div class="stat-icon">📥</div>
+          <div class="stat-info">
+            <strong id="statSubmitted">0/0</strong>
+            <p>سلّموا الامتحان</p>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statAverage">—</div>
-          <div class="stat-label">متوسط النسبة</div>
+        <div class="stat-card blue">
+          <div class="stat-icon">📊</div>
+          <div class="stat-info">
+            <strong id="statAverage">—</strong>
+            <p>متوسط النسبة</p>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statHighest">—</div>
-          <div class="stat-label">أعلى نسبة</div>
+        <div class="stat-card green">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-info">
+            <strong id="statHighest">—</strong>
+            <p>أعلى نسبة</p>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statLowest">—</div>
-          <div class="stat-label">أقل نسبة</div>
+        <div class="stat-card orange">
+          <div class="stat-icon">📉</div>
+          <div class="stat-info">
+            <strong id="statLowest">—</strong>
+            <p>أقل نسبة</p>
+          </div>
         </div>
       </div>
 
-      <!-- بحث وترتيب -->
-      <div class="grades-controls">
+      <!-- أدوات البحث والفلترة -->
+      <div class="grades-toolbar">
         <input
-          type="text"
+          type="search"
           id="searchInput"
+          class="gd-search"
           placeholder="ابحث باسم الطالب أو كوده..."
           autocomplete="off"
         />
-        <select id="sortSelect">
-          <option value="score_desc">الأعلى درجة أولاً</option>
-          <option value="score_asc">الأقل درجة أولاً</option>
-          <option value="name">ترتيب أبجدي بالاسم</option>
+        <select id="filterSelect" class="grades-select">
+          <option value="all">كل الطلاب</option>
+          <option value="submitted">اللي سلّموا</option>
+          <option value="missing">اللي ما سلّموش</option>
+        </select>
+        <select id="sortSelect" class="grades-select">
+          <option value="score_desc">الأعلى درجة</option>
+          <option value="score_asc">الأقل درجة</option>
+          <option value="name">ترتيب أبجدي</option>
         </select>
       </div>
 
-      <!-- قائمة الطلاب -->
-      <div id="studentsList"></div>
+      <!-- عناوين الأعمدة (تختفي على الموبايل) -->
+      <div class="grades-columns">
+        <span class="col-student">الطالب</span>
+        <span class="col-status">الحالة</span>
+        <span class="col-score">الدرجة</span>
+        <span class="col-time">الوقت</span>
+      </div>
 
-      <!-- حالة فارغة (لا يوجد طلاب مطابقين للبحث) -->
-      <div id="emptyState" class="empty-state hidden">
-        <p>مفيش طلاب مطابقين لبحثك.</p>
+      <!-- قائمة الطلاب -->
+      <div id="studentsList" class="gd-list"></div>
+
+      <!-- لا يوجد نتائج مطابقة -->
+      <div id="listEmpty" class="empty-state hidden">
+        <div class="empty-icon">🔍</div>
+        <h3>مفيش طلاب مطابقين</h3>
+        <p>جرّب تغيّر كلمة البحث أو الفلتر.</p>
       </div>
 
     </div>
   </div>
 
-  <!-- ===== Firebase SDK (compat) ===== -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <!-- ===== تنسيقات خاصة بالصفحة دي بس ===== -->
+  <style>
+    .grades-page {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
 
-  <!-- إعدادات Firebase الخاصة بالمشروع -->
-  <script src="../firebase-config.js"></script>
+    /* رأس الصفحة */
+    .grades-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .grades-header h1 {
+      font-size: 22px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .grades-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
 
-  <!-- منطق الصفحة -->
-  <script src="../js/teacher/grades.js"></script>
+    /* شريط الأدوات */
+    .grades-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .grades-toolbar .gd-search {
+      flex: 1;
+      min-width: 200px;
+      margin-bottom: 0;
+    }
+    .grades-select {
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: .9rem;
+      background: #fff;
+      color: var(--text);
+    }
+    .grades-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    /* عناوين الأعمدة */
+    .grades-columns {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px 8px;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--text-light);
+    }
+    .grades-columns .col-student { flex: 1; }
+    .grades-columns .col-status  { width: 110px; flex-shrink: 0; }
+    .grades-columns .col-score   { width: 120px; flex-shrink: 0; }
+    .grades-columns .col-time    { width: 70px;  flex-shrink: 0; }
+
+    /* صف الطالب (بيبني على .gd-row من main.css) */
+    .grade-row-status { width: 110px; flex-shrink: 0; }
+    .grade-row-score  { width: 120px; flex-shrink: 0; }
+    .grade-row-time   {
+      width: 70px;
+      flex-shrink: 0;
+      font-size: .85rem;
+      color: var(--text-light);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* شارات الحالة */
+    .grade-badge {
+      display: inline-block;
+      padding: 4px 11px;
+      border-radius: 20px;
+      font-size: .76rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .grade-badge.graded  { background: var(--green-light);  color: var(--green); }
+    .grade-badge.queued  { background: var(--orange-light); color: var(--orange); }
+    .grade-badge.missing { background: #f0f0f0;             color: #888; }
+    .grade-badge.former  {
+      background: var(--purple-light);
+      color: var(--purple);
+      font-size: .68rem;
+      padding: 2px 8px;
+      margin-inline-start: 4px;
+    }
+
+    /* الدرجة */
+    .grade-score {
+      font-weight: 700;
+      font-size: .98rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .grade-score small {
+      font-size: .78rem;
+      font-weight: 600;
+      opacity: .75;
+      margin-inline-start: 3px;
+    }
+    .grade-score.pass { color: var(--green); }
+    .grade-score.mid  { color: var(--orange); }
+    .grade-score.fail { color: var(--primary); }
+    .grade-score-empty { color: var(--text-light); }
+
+    /* تجاوب الموبايل: نخفي عناوين الأعمدة ونخلي الصف يلف */
+    @media (max-width: 640px) {
+      .grades-columns { display: none; }
+      .grade-row { flex-wrap: wrap; }
+      .gd-row-info { flex-basis: 100%; }
+      .grade-row-status,
+      .grade-row-score,
+      .grade-row-time { width: auto; }
+      .grade-row-time { margin-inline-start: auto; }
+    }
+  </style>
+
+  <!-- منطق الصفحة (ES Module زي باقي المشروع) -->
+  <script type="module" src="../js/teacher/grades.js"></script>
 </body>
-</html>
+</html>س
