@@ -1,135 +1,271 @@
 // ============================================
-// Login Logic - تسجيل دخول موحّد (مدرس/طالب)
+// Student Join Logic - انضمام الطالب لمدرس
 // ============================================
 
 import { auth, db } from "../../firebase-config.js";
-import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } 
+import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, updateDoc } 
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, arrayUnion }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import { reserveStudentCode, isValidCodeFormat } from "../shared/student-code.js";
 
-const loginForm = document.getElementById("loginForm");
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const loginBtn = document.getElementById("loginBtn");
-const errorEl = document.getElementById("loginError");
-const forgotPasswordLink = document.getElementById("forgotPasswordLink");
-const togglePasswordBtn = document.getElementById("togglePassword");
+// ------- عناصر الصفحة -------
+const logoutBtn = document.getElementById("logoutBtn");
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 
-// ------- إظهار / إخفاء كلمة المرور -------
-togglePasswordBtn.addEventListener("click", () => {
-  const isHidden = passwordInput.type === "password";
-  passwordInput.type = isHidden ? "text" : "password";
-  togglePasswordBtn.textContent = isHidden ? "🙈" : "👁️";
+const findTeacherView = document.getElementById("findTeacherView");
+const gradesView = document.getElementById("gradesView");
+const groupsView = document.getElementById("groupsView");
+
+const findTeacherForm = document.getElementById("findTeacherForm");
+const teacherCodeInput = document.getElementById("teacherCodeInput");
+const findBtn = document.getElementById("findBtn");
+const findError = document.getElementById("findError");
+
+const welcomeBanner = document.getElementById("welcomeBanner");
+const gradesList = document.getElementById("gradesList");
+const groupsList = document.getElementById("groupsList");
+const currentGradeName = document.getElementById("currentGradeName");
+const breadcrumb = document.getElementById("breadcrumb");
+
+// ------- متغيرات الحالة -------
+let currentStudentId = null;
+let foundTeacherId = null;
+let foundTeacherName = null;
+let selectedGradeId = null;
+
+// ------- القائمة الجانبية (موبايل) -------
+if (menuToggle) menuToggle.addEventListener("click", () => {
+  sidebar.classList.add("open");
+  sidebarBackdrop.classList.add("show");
+});
+if (sidebarBackdrop) sidebarBackdrop.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  sidebarBackdrop.classList.remove("show");
 });
 
-// ------- دالة مساعدة لعرض الأخطاء -------
-function showError(message, isSuccess = false) {
-  errorEl.textContent = message;
-  errorEl.style.color = isSuccess ? "green" : "#c0392b";
-}
-
-// ------- ترجمة أكواد أخطاء Firebase لرسائل مفهومة -------
-function translateFirebaseError(code) {
-  switch (code) {
-    case "auth/invalid-email":
-      return "صيغة البريد الإلكتروني غير صحيحة";
-    case "auth/user-not-found":
-    case "auth/wrong-password":
-    case "auth/invalid-credential":
-      return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
-    case "auth/too-many-requests":
-      return "محاولات كتيرة غلط، حاول تاني بعد شوية";
-    case "auth/user-disabled":
-      return "هذا الحساب معطل، تواصل مع الدعم";
-    default:
-      return "حدث خطأ، حاول مرة أخرى";
-  }
-}
-
-// ============================================
-// تجهيز كود الطالب لو مش موجود
-//
-// بيشتغل للطلاب اللي اتسجّلوا قبل ما نضيف نظام الأكواد،
-// أو اللي عندهم كود بالشكل القديم (زي STD1234).
-//
-// مهم: ده لازم يتم من حساب الطالب نفسه، لأن قاعدة users
-// بتسمح للمستخدم يكتب في مستنده هو بس (المدرس مش مسموحله).
-// ============================================
-async function ensureStudentCodeOnLogin(uid, userData) {
-  // عنده كود بالشكل الصح؟ مفيش حاجة نعملها
-  if (isValidCodeFormat(userData.studentId)) return;
-
-  try {
-    const newCode = await reserveStudentCode(uid);
-    await updateDoc(doc(db, "users", uid), { studentId: newCode });
-  } catch (error) {
-    // مش بنوقف تسجيل الدخول لو فشل التوليد —
-    // الطالب يدخل عادي وهنحاول تاني المرة الجاية
-    console.error("[login] تعذر توليد كود الطالب:", error.code, error.message);
-  }
-}
-
-// ------- تسجيل الدخول -------
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  showError("");
-
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  // تعطيل الزرار ومنع الضغط المتكرر
-  loginBtn.disabled = true;
-  loginBtn.textContent = "جاري الدخول...";
-
-  try {
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    const userDoc = await getDoc(doc(db, "users", credential.user.uid));
-
-    if (!userDoc.exists()) {
-      showError("الحساب غير مكتمل البيانات، تواصل مع الدعم");
-      await signOut(auth);
-      return;
-    }
-
-    const userData = userDoc.data();
-    const role = userData.role;
-
-    if (role === "teacher") {
-      window.location.href = "pages/teacher-dashboard.html";
-    } else if (role === "student") {
-      // نتأكد إن عنده كود قبل ما ندخّله
-      await ensureStudentCodeOnLogin(credential.user.uid, userData);
-      window.location.href = "pages/student-home.html";
-    }
-
-  } catch (error) {
-    showError(translateFirebaseError(error.code));
-  } finally {
-    loginBtn.disabled = false;
-    loginBtn.textContent = "دخول";
-  }
-});
-
-// ------- نسيت كلمة المرور -------
-forgotPasswordLink.addEventListener("click", async (e) => {
-  e.preventDefault();
-  const email = emailInput.value.trim();
-
-  if (!email) {
-    showError("اكتب بريدك الإلكتروني الأول عشان نبعتلك رابط الاستعادة");
+// ------- حماية الصفحة: لازم طالب مسجل دخول -------
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "../index.html";
     return;
   }
 
-  forgotPasswordLink.style.pointerEvents = "none"; // منع الضغط المتكرر
+  const userDoc = await getDoc(doc(db, "users", user.uid));
+  if (!userDoc.exists() || userDoc.data().role !== "student") {
+    window.location.href = "../index.html";
+    return;
+  }
+
+  currentStudentId = user.uid;
+});
+
+// ============================================
+// المرحلة 1: البحث عن المدرس بالـ ID
+// ============================================
+
+findTeacherForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  findError.textContent = "";
+
+  const code = teacherCodeInput.value.trim();
+  if (!code) return;
+
+  findBtn.disabled = true;
+  findBtn.textContent = "جاري البحث...";
 
   try {
-    await sendPasswordResetEmail(auth, email);
-    showError("تم إرسال رابط إعادة تعيين كلمة المرور لبريدك الإلكتروني", true);
+    // ندور على مدرس عنده teacherCode ده
+    const teacherQuery = query(
+      collection(db, "users"),
+      where("teacherCode", "==", code),
+      where("role", "==", "teacher")
+    );
+    const snapshot = await getDocs(teacherQuery);
+
+    if (snapshot.empty) {
+      findError.textContent = "مفيش مدرس بالـ ID ده، اتأكد من الرقم";
+      return;
+    }
+
+    // لقينا المدرس
+    const teacherDoc = snapshot.docs[0];
+    foundTeacherId = teacherDoc.id;
+    foundTeacherName = teacherDoc.data().fullName || "المدرس";
+
+    // ننتقل لعرض السنوات
+    showGradesView();
+
   } catch (error) {
-    showError(translateFirebaseError(error.code));
+    console.error("Find teacher error:", error);
+    findError.textContent = "حدث خطأ، حاول مرة أخرى";
   } finally {
-    setTimeout(() => { forgotPasswordLink.style.pointerEvents = "auto"; }, 3000);
+    findBtn.disabled = false;
+    findBtn.textContent = "بحث";
+  }
+});
+
+// ============================================
+// المرحلة 2: عرض سنوات المدرس
+// ============================================
+
+async function showGradesView() {
+  findTeacherView.classList.add("hidden");
+  gradesView.classList.remove("hidden");
+  groupsView.classList.add("hidden");
+
+  welcomeBanner.textContent = `👋 أهلاً بك مع ${foundTeacherName}`;
+  breadcrumb.innerHTML = `<span class="breadcrumb-item active">السنوات الدراسية</span>`;
+
+  gradesList.innerHTML = `<p class="loading-text">جاري التحميل...</p>`;
+
+  try {
+    const gradesQuery = query(
+      collection(db, "grades"),
+      where("teacherId", "==", foundTeacherId)
+    );
+    const snapshot = await getDocs(gradesQuery);
+
+    if (snapshot.empty) {
+      gradesList.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-icon">📚</div>
+          <h3>المدرس لسه معملش سنوات دراسية</h3>
+          <p>ارجع بعدين لما المدرس يجهز مجموعاته.</p>
+        </div>
+      `;
+      return;
+    }
+
+    gradesList.innerHTML = "";
+    snapshot.forEach((gradeDoc) => {
+      const grade = gradeDoc.data();
+      const card = document.createElement("div");
+      card.className = "entity-card";
+      card.innerHTML = `
+        <div class="entity-card-icon">📚</div>
+        <h3>${grade.gradeName}</h3>
+        <p>اضغط لعرض المجموعات</p>
+      `;
+      card.addEventListener("click", () => showGroupsView(gradeDoc.id, grade.gradeName));
+      gradesList.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error("Load grades error:", error);
+    gradesList.innerHTML = `<p class="message error">تعذر تحميل السنوات</p>`;
+  }
+}
+
+// ============================================
+// المرحلة 3: عرض المجموعات + طلب الانضمام
+// ============================================
+
+async function showGroupsView(gradeId, gradeName) {
+  selectedGradeId = gradeId;
+
+  gradesView.classList.add("hidden");
+  groupsView.classList.remove("hidden");
+  currentGradeName.textContent = `مجموعات ${gradeName}`;
+
+  breadcrumb.innerHTML = `
+    <span class="breadcrumb-item" id="crumbBack">السنوات الدراسية</span>
+    <span class="breadcrumb-separator">›</span>
+    <span class="breadcrumb-item active">${gradeName}</span>
+  `;
+  document.getElementById("crumbBack").addEventListener("click", () => showGradesView());
+
+  groupsList.innerHTML = `<p class="loading-text">جاري التحميل...</p>`;
+
+  try {
+    const groupsQuery = query(
+      collection(db, "groups"),
+      where("teacherId", "==", foundTeacherId),
+      where("gradeId", "==", gradeId)
+    );
+    const snapshot = await getDocs(groupsQuery);
+
+    if (snapshot.empty) {
+      groupsList.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-icon">👥</div>
+          <h3>مفيش مجموعات في السنة دي</h3>
+        </div>
+      `;
+      return;
+    }
+
+    groupsList.innerHTML = "";
+    snapshot.forEach((groupDoc) => {
+      const group = groupDoc.data();
+      const groupId = groupDoc.id;
+      const isMember = (group.studentIds || []).includes(currentStudentId);
+      const isPending = (group.pendingRequests || []).includes(currentStudentId);
+
+      // نحدد حالة الطالب في المجموعة دي
+      let statusHtml = "";
+      if (isMember) {
+        statusHtml = `<span class="join-status member">✓ منضم</span>`;
+      } else if (isPending) {
+        statusHtml = `<span class="join-status pending">⏳ بانتظار الموافقة</span>`;
+      } else {
+        statusHtml = `<span class="join-status available">اضغط للانضمام</span>`;
+      }
+
+      const card = document.createElement("div");
+      card.className = "entity-card";
+      card.innerHTML = `
+        <div class="entity-card-icon">👥</div>
+        <h3>${group.groupName}</h3>
+        ${statusHtml}
+      `;
+
+      // التعامل مع الضغط حسب الحالة
+      card.addEventListener("click", async () => {
+        if (isMember) {
+          alert("إنت منضم للمجموعة دي بالفعل ✅ (صفحة المجموعة هنعملها قريب)");
+        } else if (isPending) {
+          alert("طلبك لسه بانتظار موافقة المدرس ⏳");
+        } else {
+          await requestJoin(groupId, group.groupName);
+        }
+      });
+
+      groupsList.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error("Load groups error:", error);
+    groupsList.innerHTML = `<p class="message error">تعذر تحميل المجموعات</p>`;
+  }
+}
+
+// ------- طلب الانضمام لمجموعة -------
+async function requestJoin(groupId, groupName) {
+  if (!confirm(`عايز تطلب الانضمام لـ "${groupName}"؟`)) return;
+
+  try {
+    await updateDoc(doc(db, "groups", groupId), {
+      pendingRequests: arrayUnion(currentStudentId)
+    });
+    alert("تم إرسال طلب الانضمام ✅ استنى موافقة المدرس");
+    // نعيد تحميل المجموعات عشان تتحدث الحالة
+    showGroupsView(selectedGradeId, currentGradeName.textContent.replace("مجموعات ", ""));
+  } catch (error) {
+    console.error("Join request error:", error);
+    alert("حدث خطأ، حاول مرة أخرى");
+  }
+}
+
+// ------- تسجيل الخروج -------
+logoutBtn.addEventListener("click", async () => {
+  logoutBtn.disabled = true;
+  try {
+    await signOut(auth);
+    window.location.href = "../index.html";
+  } catch (error) {
+    console.error("Logout error:", error);
+    logoutBtn.disabled = false;
   }
 });
