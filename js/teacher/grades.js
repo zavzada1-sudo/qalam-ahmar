@@ -65,8 +65,10 @@ onAuthStateChanged(auth, async (user) => {
 // الدالة الرئيسية: تجميع بيانات النتائج
 // ============================================
 async function loadGrades(teacherId) {
+  let exam;
+
+  // ---- 1. جلب بيانات الامتحان ----
   try {
-    // ---- 1. جلب بيانات الامتحان ----
     const examDoc = await getDoc(doc(db, "exams", examId));
 
     if (!examDoc.exists()) {
@@ -74,7 +76,7 @@ async function loadGrades(teacherId) {
       return;
     }
 
-    const exam = examDoc.data();
+    exam = examDoc.data();
 
     // تأكيد أمني: الامتحان لازم يكون بتاع المدرس اللي داخل
     if (exam.teacherId !== teacherId) {
@@ -84,15 +86,36 @@ async function loadGrades(teacherId) {
 
     currentExam = exam;
     renderHeader(exam);
+  } catch (error) {
+    console.error("[grades] فشل في قراءة exams:", error.code, error.message);
+    showError("تعذر تحميل بيانات الامتحان (مشكلة صلاحيات في exams)");
+    return;
+  }
 
-    // ---- 2. جلب طلاب المجموعات المرتبطة بالامتحان ----
-    const students = await getStudentsOfGroups(exam.groupIds || []);
+  // ---- 2. جلب طلاب المجموعات المرتبطة بالامتحان ----
+  let students;
+  try {
+    students = await getStudentsOfGroups(exam.groupIds || []);
+  } catch (error) {
+    console.error("[grades] فشل في قراءة groups أو users:", error.code, error.message);
+    showError("تعذر تحميل بيانات الطلاب (مشكلة صلاحيات في groups/users)");
+    return;
+  }
 
-    // ---- 3. جلب كل تسليمات الامتحان (استعلام واحد) ----
-    const subsSnap = await getDocs(query(
+  // ---- 3. جلب كل تسليمات الامتحان (استعلام واحد) ----
+  let subsSnap;
+  try {
+    subsSnap = await getDocs(query(
       collection(db, "submissions"),
       where("examId", "==", examId)
     ));
+  } catch (error) {
+    console.error("[grades] فشل في قراءة submissions:", error.code, error.message);
+    showError("تعذر تحميل التسليمات (مشكلة صلاحيات في submissions)");
+    return;
+  }
+
+  try {
 
     // نحوّلهم لخريطة: studentId → بيانات التسليم (بحث سريع)
     const submissionsMap = new Map();
@@ -121,7 +144,8 @@ async function loadGrades(teacherId) {
     showContent();
 
   } catch (error) {
-    console.error("Load grades error:", error);
+    // ملاحظة مؤقتة: بتطبع كود الخطأ ورسالته كاملة عشان نحدد مصدر المشكلة بالظبط
+    console.error("Load grades error:", error.code, error.message, error);
     showError("تعذر تحميل النتايج، حاول تحديث الصفحة");
   }
 }
@@ -159,7 +183,8 @@ async function getStudentsOfGroups(groupIds) {
       if (!groupDoc.exists()) continue;
       (groupDoc.data().studentIds || []).forEach((id) => studentIdSet.add(id));
     } catch (error) {
-      console.warn("Skipped group:", groupId, error);
+      // تحذير (مش خطأ أحمر) عشان القراءة بتكمل حتى لو مجموعة واحدة فشلت
+      console.warn(`[grades] تعذر قراءة المجموعة ${groupId}:`, error.code, error.message);
     }
   }
 
