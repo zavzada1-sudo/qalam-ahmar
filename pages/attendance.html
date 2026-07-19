@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الحضور - قلم أحمر</title>
+  <meta name="theme-color" content="#c0392b" />
+  <link rel="manifest" href="../manifest.json" />
+
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/rtl.css" />
+</head>
+<body>
+
+  <div class="att-page">
+
+    <!-- ===== مسار التنقل ===== -->
+    <div class="breadcrumb">
+      <a href="teacher-dashboard.html" class="breadcrumb-item">لوحة التحكم</a>
+      <span class="breadcrumb-separator">›</span>
+      <span class="breadcrumb-item active">الحضور</span>
+    </div>
+
+    <!-- ===== حالة التحميل ===== -->
+    <div id="loadingState" class="exam-loading">
+      <div class="loading-spinner"></div>
+      <p>بنحمّل الفصول...</p>
+    </div>
+
+    <!-- ===== حالة الخطأ ===== -->
+    <div id="errorState" class="exam-error hidden">
+      <div class="error-icon">⚠️</div>
+      <h3 id="errorText"></h3>
+      <a href="classes.html" class="btn btn-primary">روح لصفحة الفصول</a>
+    </div>
+
+    <!-- ===== المحتوى ===== -->
+    <div id="contentWrapper" class="hidden">
+
+      <div class="att-header">
+        <h1>تسجيل الحضور</h1>
+        <p>اختار المجموعة والتاريخ، وعلّم على الغايبين بس — الباقي حاضر تلقائيًا.</p>
+      </div>
+
+      <!-- ===== اختيار المجموعة والتاريخ ===== -->
+      <div class="card att-selectors">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gradeSelect">السنة الدراسية</label>
+            <select id="gradeSelect">
+              <option value="">اختار السنة الدراسية</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="groupSelect">المجموعة</label>
+            <select id="groupSelect" disabled>
+              <option value="">اختار المجموعة</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="dateInput">التاريخ</label>
+            <input type="date" id="dateInput" />
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== حالة فارغة قبل الاختيار ===== -->
+      <div id="sheetEmpty" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>اختار مجموعة وتاريخ</h3>
+        <p>هيظهرلك كشف بكل طلاب المجموعة عشان تسجّل حضورهم.</p>
+      </div>
+
+      <!-- ===== كشف الحضور ===== -->
+      <div id="attendanceSheet" class="hidden">
+
+        <!-- إحصائيات حيّة -->
+        <div class="stats-grid att-stats">
+          <div class="stat-card blue">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <strong id="statTotal">0</strong>
+              <p>إجمالي الطلاب</p>
+            </div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+              <strong id="statPresent">0</strong>
+              <p>حاضر</p>
+            </div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-icon">⏰</div>
+            <div class="stat-info">
+              <strong id="statLate">0</strong>
+              <p>متأخر</p>
+            </div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-icon">❌</div>
+            <div class="stat-info">
+              <strong id="statAbsent">0</strong>
+              <p>غايب</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- شريط الأدوات -->
+        <div class="att-toolbar">
+          <input
+            type="search"
+            id="searchInput"
+            class="gd-search"
+            placeholder="ابحث باسم الطالب أو كوده..."
+            autocomplete="off"
+          />
+          <button type="button" id="markAllPresent" class="gd-btn gd-btn-accept">
+            الكل حاضر
+          </button>
+          <button type="button" id="markAllAbsent" class="gd-btn gd-btn-reject">
+            الكل غايب
+          </button>
+        </div>
+
+        <!-- قائمة الطلاب -->
+        <div id="studentsList" class="gd-list"></div>
+
+        <!-- شريط الحفظ -->
+        <div class="att-save-bar">
+          <div class="att-save-info">
+            <button type="button" id="saveBtn" class="btn btn-primary">حفظ الحضور</button>
+            <span id="savedHint" class="att-saved-hint"></span>
+          </div>
+          <p id="saveMessage" class="message"></p>
+        </div>
+
+        <!-- سجل الأيام السابقة -->
+        <div class="att-history">
+          <h2>سجل الحضور السابق</h2>
+
+          <div id="historyList" class="gd-list"></div>
+
+          <div id="historyEmpty" class="gd-empty hidden">
+            لسه مفيش أيام حضور متسجلة للمجموعة دي.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== تنسيقات خاصة بالصفحة دي بس ===== -->
+  <style>
+    .att-page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .att-header { margin-bottom: 20px; }
+    .att-header h1 { font-size: 22px; color: var(--primary); margin-bottom: 4px; }
+    .att-header p { font-size: 14px; color: var(--text-muted); }
+
+    .att-selectors { margin-bottom: 20px; }
+    .att-selectors .form-row { margin-bottom: 0; }
+    .att-selectors .form-group { margin-bottom: 0; }
+
+    .att-stats { margin-bottom: 18px; }
+
+    /* شريط الأدوات */
+    .att-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .att-toolbar .gd-search {
+      flex: 1;
+      min-width: 200px;
+      margin-bottom: 0;
+    }
+    .att-toolbar .gd-btn { padding: 10px 16px; }
+
+    /* صف الطالب */
+    .att-row { gap: 12px; }
+
+    /* أزرار الحالة (حاضر / متأخر / غايب) */
+    .att-status-group {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .att-status-btn {
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      padding: 7px 14px;
+      font-size: .85rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+    .att-status-btn:hover { border-color: var(--text-light); }
+
+    .att-status-btn.present.active {
+      background: var(--green); border-color: var(--green); color: #fff;
+    }
+    .att-status-btn.late.active {
+      background: var(--orange); border-color: var(--orange); color: #fff;
+    }
+    .att-status-btn.absent.active {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+
+    /* شريط الحفظ */
+    .att-save-bar {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 18px;
+      margin-top: 16px;
+      position: sticky;
+      bottom: 12px;
+      z-index: 5;
+    }
+    .att-save-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .att-saved-hint {
+      font-size: .82rem;
+      color: var(--orange);
+      font-weight: 600;
+    }
+    .att-save-bar .message { margin-top: 6px; }
+
+    /* سجل الأيام السابقة */
+    .att-history { margin-top: 34px; }
+    .att-history h2 {
+      font-size: 18px;
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    .att-history-row.current {
+      border-color: var(--primary);
+      background: var(--primary-lighter);
+    }
+
+    .att-history-counts {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .att-count {
+      font-size: .76rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .att-count.present { background: var(--green-light);  color: var(--green); }
+    .att-count.late    { background: var(--orange-light); color: var(--orange); }
+    .att-count.absent  { background: var(--primary-light); color: var(--primary); }
+
+    .att-history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* تجاوب الموبايل */
+    @media (max-width: 640px) {
+      .att-row { flex-wrap: wrap; }
+      .att-row .gd-row-info { flex-basis: 100%; }
+      .att-status-group { width: 100%; }
+      .att-status-btn { flex: 1; padding: 9px 6px; }
+
+      .att-history-row { flex-wrap: wrap; }
+      .att-history-row .gd-row-info { flex-basis: 100%; }
+      .att-history-actions { margin-inline-start: auto; }
+    }
+  </style>
+
+  <script type="module" src="../js/teacher/attendance.js"></script>
+</body>
+</html>
