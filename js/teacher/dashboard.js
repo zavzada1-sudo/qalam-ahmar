@@ -196,7 +196,8 @@ async function deleteExam(examId, examTitle, teacherId) {
   try {
     const subsSnap = await getDocs(query(
       collection(db, "submissions"),
-      where("examId", "==", examId)
+      where("examId", "==", examId),
+      where("teacherId", "==", teacherId)
     ));
     submissionsCount = subsSnap.size;
   } catch (error) {

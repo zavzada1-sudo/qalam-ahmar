@@ -88,7 +88,7 @@ async function loadGrades(teacherId) {
     renderHeader(exam);
   } catch (error) {
     console.error("[grades] فشل في قراءة exams:", error.code, error.message);
-    showError("تعذر تحميل بيانات الامتحان (مشكلة صلاحيات في exams)");
+    showError("تعذر تحميل بيانات الامتحان، حاول تحديث الصفحة");
     return;
   }
 
@@ -98,20 +98,23 @@ async function loadGrades(teacherId) {
     students = await getStudentsOfGroups(exam.groupIds || []);
   } catch (error) {
     console.error("[grades] فشل في قراءة groups أو users:", error.code, error.message);
-    showError("تعذر تحميل بيانات الطلاب (مشكلة صلاحيات في groups/users)");
+    showError("تعذر تحميل بيانات الطلاب، حاول تحديث الصفحة");
     return;
   }
 
-  // ---- 3. جلب كل تسليمات الامتحان (استعلام واحد) ----
+  // ---- 3. جلب كل تسليمات الامتحان ----
+  // مهم: لازم نضيف شرط teacherId عشان الاستعلام يطابق قاعدة الأمان.
+  // Firestore بيرفض أي list query ما يقدرش يثبت مقدمًا إن نتايجه كلها مسموح بيها.
   let subsSnap;
   try {
     subsSnap = await getDocs(query(
       collection(db, "submissions"),
-      where("examId", "==", examId)
+      where("examId", "==", examId),
+      where("teacherId", "==", teacherId)
     ));
   } catch (error) {
     console.error("[grades] فشل في قراءة submissions:", error.code, error.message);
-    showError("تعذر تحميل التسليمات (مشكلة صلاحيات في submissions)");
+    showError("تعذر تحميل التسليمات، حاول تحديث الصفحة");
     return;
   }
 
