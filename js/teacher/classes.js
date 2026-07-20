@@ -9,6 +9,7 @@ import { doc, getDoc, collection, addDoc, deleteDoc, updateDoc,
          query, where, getDocs, arrayUnion, arrayRemove }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showToast, showConfirm } from "../shared/ui.js";
+import "../shared/theme.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
