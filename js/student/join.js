@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, arrayUnion }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showToast, showConfirm } from "../shared/ui.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
@@ -224,9 +225,9 @@ async function showGroupsView(gradeId, gradeName) {
       // التعامل مع الضغط حسب الحالة
       card.addEventListener("click", async () => {
         if (isMember) {
-          alert("إنت منضم للمجموعة دي بالفعل ✅ (صفحة المجموعة هنعملها قريب)");
+          showToast("إنت منضم للمجموعة دي بالفعل ✅ (صفحة المجموعة هنعملها قريب)", "info");
         } else if (isPending) {
-          alert("طلبك لسه بانتظار موافقة المدرس ⏳");
+          showToast("طلبك لسه بانتظار موافقة المدرس ⏳", "info");
         } else {
           await requestJoin(groupId, group.groupName);
         }
@@ -243,18 +244,23 @@ async function showGroupsView(gradeId, gradeName) {
 
 // ------- طلب الانضمام لمجموعة -------
 async function requestJoin(groupId, groupName) {
-  if (!confirm(`عايز تطلب الانضمام لـ "${groupName}"؟`)) return;
+  const confirmed = await showConfirm({
+    title: "طلب الانضمام",
+    message: `عايز تطلب الانضمام لـ "${groupName}"؟`,
+    confirmLabel: "إرسال الطلب",
+  });
+  if (!confirmed) return;
 
   try {
     await updateDoc(doc(db, "groups", groupId), {
       pendingRequests: arrayUnion(currentStudentId)
     });
-    alert("تم إرسال طلب الانضمام ✅ استنى موافقة المدرس");
+    showToast("تم إرسال طلب الانضمام ✅ استنى موافقة المدرس", "success");
     // نعيد تحميل المجموعات عشان تتحدث الحالة
     showGroupsView(selectedGradeId, currentGradeName.textContent.replace("مجموعات ", ""));
   } catch (error) {
     console.error("Join request error:", error);
-    alert("حدث خطأ، حاول مرة أخرى");
+    showToast("حدث خطأ، حاول مرة أخرى", "error");
   }
 }
 

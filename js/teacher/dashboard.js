@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, setDoc, updateDoc,deleteDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showToast, showConfirm } from "../shared/ui.js";
 
 // عناصر الصفحة
 const teacherNameEl = document.getElementById("teacherName");
@@ -205,22 +206,27 @@ async function deleteExam(examId, examTitle, teacherId) {
   }
 
   // رسالة تحذير حسب الحالة
-  let confirmMessage = `متأكد إنك عايز تمسح "${examTitle}"؟\nمش هتقدر ترجّعه تاني.`;
+  let confirmMessage = `متأكد إنك عايز تمسح "${examTitle}"؟ مش هتقدر ترجّعه تاني.`;
   if (submissionsCount > 0) {
     confirmMessage =
-      `⚠️ تحذير: فيه ${submissionsCount} طالب سلّموا الامتحان ده بالفعل.\n\n` +
-      `لو مسحته، نتايجهم هتفضل موجودة بس من غير أسئلة الامتحان (مش هيقدروا يراجعوا إجاباتهم).\n\n` +
-      `متأكد إنك عايز تمسح "${examTitle}"؟`;
+      `فيه ${submissionsCount} طالب سلّموا الامتحان ده بالفعل. لو مسحته، نتايجهم هتفضل موجودة بس من غير أسئلة الامتحان (مش هيقدروا يراجعوا إجاباتهم). متأكد إنك عايز تمسح "${examTitle}"؟`;
   }
 
-  if (!confirm(confirmMessage)) return;
+  const confirmed = await showConfirm({
+    title: submissionsCount > 0 ? "⚠️ تحذير: فيه تسليمات مرتبطة" : "حذف الامتحان",
+    message: confirmMessage,
+    confirmLabel: "حذف",
+    danger: true,
+  });
+  if (!confirmed) return;
 
   try {
     await deleteDoc(doc(db, "exams", examId));
+    showToast("تم حذف الامتحان بنجاح", "success");
     await loadTeacherExams(teacherId); // نعيد تحميل القايمة
   } catch (error) {
     console.error("Delete exam error:", error);
-    alert("حصلت مشكلة في الحذف، حاول تاني");
+    showToast("حصلت مشكلة في الحذف، حاول تاني", "error");
   }
 }
 

@@ -7,6 +7,7 @@ import { onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, collection, query, where, getDocs, addDoc }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showToast } from "../shared/ui.js";
 
 // ------- عناصر الصفحة -------
 const loadingView = document.getElementById("loadingView");
@@ -409,7 +410,7 @@ async function submitExam() {
 
   } catch (error) {
     console.error("Submit error:", error);
-    alert("حصلت مشكلة في التسليم، حاول تاني");
+    showToast("حصلت مشكلة في التسليم، حاول تاني", "error");
     isSubmitting = false;
     submitBtn.disabled = false;
     submitBtnBottom.disabled = false;

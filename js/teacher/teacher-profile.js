@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showToast, showConfirm } from "../shared/ui.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
@@ -111,7 +112,7 @@ copyCodeBtn.addEventListener("click", async () => {
     setTimeout(() => (copyCodeBtn.textContent = original), 1500);
   } catch (error) {
     console.error("Copy error:", error);
-    alert("مقدرناش ننسخ تلقائيًا، انسخ الـ ID يدويًا");
+    showToast("مقدرناش ننسخ تلقائيًا، انسخ الـ ID يدويًا", "error");
   }
 });
 
@@ -215,7 +216,13 @@ async function resetStudentPassword(email, name, btn) {
     showStudentsMessage(`الطالب "${name}" مالوش إيميل مسجّل`, "error");
     return;
   }
-  if (!confirm(`هيتبعت رابط إعادة تعيين كلمة المرور على إيميل "${name}". تمام؟`)) return;
+
+  const confirmed = await showConfirm({
+    title: "إعادة تعيين كلمة المرور",
+    message: `هيتبعت رابط إعادة تعيين كلمة المرور على إيميل "${name}". تمام؟`,
+    confirmLabel: "إرسال",
+  });
+  if (!confirmed) return;
 
   btn.disabled = true;
   const original = btn.textContent;

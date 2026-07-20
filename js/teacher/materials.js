@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showConfirm } from "../shared/ui.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
@@ -244,7 +245,13 @@ function buildMaterialCard(material) {
 
   card.querySelector(".material-delete").addEventListener("click", async (e) => {
     e.stopPropagation();
-    if (!confirm(`متأكد إنك عايز تمسح "${material.title}"؟`)) return;
+    const confirmed = await showConfirm({
+      title: "حذف المادة",
+      message: `متأكد إنك عايز تمسح "${material.title}"؟`,
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteDoc(doc(db, "materials", material.id));
       showPageMessage("تم حذف المادة ✅", "success");

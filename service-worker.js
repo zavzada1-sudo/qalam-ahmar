@@ -1,4 +1,4 @@
-const CACHE_NAME = "qalam-ahmar-v2";
+const CACHE_NAME = "qalam-ahmar-v3"; // v2 -> v3: عشان نضيف خطوط Cairo للكاش
 const CORE_ASSETS = [
   "/index.html",
   "/assets/css/main.css",
@@ -6,7 +6,13 @@ const CORE_ASSETS = [
   "/pages/teacher-dashboard.html",
   "/js/teacher/dashboard.js",
   "/firebase-config.js",
-  "/manifest.json"
+  "/manifest.json",
+  "/assets/fonts/cairo-arabic-400-normal.woff2",
+  "/assets/fonts/cairo-arabic-600-normal.woff2",
+  "/assets/fonts/cairo-arabic-700-normal.woff2",
+  "/assets/fonts/cairo-latin-400-normal.woff2",
+  "/assets/fonts/cairo-latin-600-normal.woff2",
+  "/assets/fonts/cairo-latin-700-normal.woff2"
 ];
 
 self.addEventListener("install", (event) => {

@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showConfirm } from "../shared/ui.js";
 
 // ============================================
 // ⚠️ ضع الـ API Key بتاعك من imgbb.com هنا
@@ -180,7 +181,12 @@ onAuthStateChanged(auth, async (user) => {
 
     const localDraft = loadDraftFromStorage();
     if (localDraft) {
-      const wantsRestore = confirm("لقينا تعديلات لسه ماتحفظتش على الامتحان ده، عايز تكمل منها؟");
+      const wantsRestore = await showConfirm({
+        title: "تعديلات غير محفوظة",
+        message: "لقينا تعديلات لسه ماتحفظتش على الامتحان ده، عايز تكمل منها؟",
+        confirmLabel: "أكمل منها",
+        cancelLabel: "ابدأ من جديد",
+      });
       if (wantsRestore) { restoreDraft(localDraft); return; }
       else clearDraftStorage();
     }
@@ -189,7 +195,12 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     const draft = loadDraftFromStorage();
     if (draft && (draft.title || (draft.questions && draft.questions.length > 0))) {
-      const wantsRestore = confirm("لقينا امتحان لسه ماتحفظش من قبل، عايز تكمل منه؟");
+      const wantsRestore = await showConfirm({
+        title: "امتحان غير محفوظ",
+        message: "لقينا امتحان لسه ماتحفظش من قبل، عايز تكمل منه؟",
+        confirmLabel: "أكمل منه",
+        cancelLabel: "ابدأ من جديد",
+      });
       if (wantsRestore) restoreDraft(draft);
       else clearDraftStorage();
     }
@@ -577,12 +588,18 @@ function attachQuestionCardEvents(card, index) {
     saveDraftToStorage();
   });
 
-  card.querySelector(".q-delete").addEventListener("click", () => {
+  card.querySelector(".q-delete").addEventListener("click", async () => {
     if (questions.length <= 1) {
       showFormMessage("لازم يكون فيه سؤال واحد على الأقل", "error");
       return;
     }
-    if (!confirm("متأكد إنك عايز تحذف السؤال ده؟")) return;
+    const confirmed = await showConfirm({
+      title: "حذف السؤال",
+      message: "متأكد إنك عايز تحذف السؤال ده؟",
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
     questions.splice(index, 1);
     renderAllQuestions();
     updateSummary();

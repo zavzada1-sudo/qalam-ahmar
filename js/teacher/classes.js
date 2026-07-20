@@ -8,6 +8,7 @@ import { onAuthStateChanged, signOut }
 import { doc, getDoc, collection, addDoc, deleteDoc, updateDoc,
          query, where, getDocs, arrayUnion, arrayRemove }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { showToast, showConfirm } from "../shared/ui.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
@@ -114,10 +115,16 @@ async function loadGrades() {
       // حذف السنة (مع منع فتح المجموعات)
       card.querySelector(".entity-delete").addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (confirm(`متأكد إنك عايز تمسح "${grade.gradeName}"؟`)) {
-          await deleteDoc(doc(db, "grades", gradeDoc.id));
-          await loadGrades();
-        }
+        const confirmed = await showConfirm({
+          title: "حذف السنة الدراسية",
+          message: `متأكد إنك عايز تمسح "${grade.gradeName}"؟`,
+          confirmLabel: "حذف",
+          danger: true,
+        });
+        if (!confirmed) return;
+        await deleteDoc(doc(db, "grades", gradeDoc.id));
+        showToast("تم حذف السنة الدراسية بنجاح", "success");
+        await loadGrades();
       });
 
       gradesList.appendChild(card);
@@ -204,10 +211,16 @@ async function loadGroups() {
 
       card.querySelector(".entity-delete").addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (confirm(`متأكد إنك عايز تمسح "${group.groupName}"؟`)) {
-          await deleteDoc(doc(db, "groups", groupDoc.id));
-          await loadGroups();
-        }
+        const confirmed = await showConfirm({
+          title: "حذف المجموعة",
+          message: `متأكد إنك عايز تمسح "${group.groupName}"؟`,
+          confirmLabel: "حذف",
+          danger: true,
+        });
+        if (!confirmed) return;
+        await deleteDoc(doc(db, "groups", groupDoc.id));
+        showToast("تم حذف المجموعة بنجاح", "success");
+        await loadGroups();
       });
 
       groupsList.appendChild(card);
@@ -554,14 +567,26 @@ async function acceptStudents(ids) {
 }
 async function rejectStudents(ids) {
   if (!ids || ids.length === 0) return;
-  if (!confirm(`متأكد إنك عايز ترفض ${ids.length} طلب؟`)) return;
+  const confirmed = await showConfirm({
+    title: "رفض الطلبات",
+    message: `متأكد إنك عايز ترفض ${ids.length} طلب؟`,
+    confirmLabel: "رفض",
+    danger: true,
+  });
+  if (!confirmed) return;
   await runGroupAction(
     { pendingRequests: arrayRemove(...ids) },
     `تم رفض ${ids.length} طلب`
   );
 }
 async function removeMember(id) {
-  if (!confirm("متأكد إنك عايز تشيل الطالب من المجموعة؟")) return;
+  const confirmed = await showConfirm({
+    title: "إزالة الطالب",
+    message: "متأكد إنك عايز تشيل الطالب من المجموعة؟",
+    confirmLabel: "إزالة",
+    danger: true,
+  });
+  if (!confirmed) return;
   await runGroupAction({ studentIds: arrayRemove(id) }, "تم إزالة الطالب من المجموعة");
 }
 
