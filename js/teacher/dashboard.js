@@ -8,6 +8,8 @@ import { onAuthStateChanged, signOut }
 import { doc, getDoc, setDoc, updateDoc,deleteDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showToast, showConfirm } from "../shared/ui.js";
+import { renderSkeleton, renderErrorState } from "../shared/states.js";
+import "../shared/theme.js";
 
 // عناصر الصفحة
 const teacherNameEl = document.getElementById("teacherName");
@@ -74,6 +76,8 @@ onAuthStateChanged(auth, async (user) => {
 
 // ------- جلب امتحانات المدرس + حساب الإحصائيات -------
 async function loadTeacherExams(teacherId) {
+  renderSkeleton(examsListEl, { type: "card", count: 3 }); // بدل ما نسيبها فاضية وقت التحميل
+
   try {
     const examsQuery = query(
       collection(db, "exams"),
@@ -150,11 +154,12 @@ async function loadTeacherExams(teacherId) {
       examsListEl.appendChild(card);
     });
 
-      
-
   } catch (error) {
     console.error("Error loading exams:", error);
-    examsListEl.innerHTML = `<p class="message error">تعذر تحميل الامتحانات، حاول تحديث الصفحة</p>`;
+    renderErrorState(examsListEl, {
+      message: "تعذر تحميل الامتحانات، حاول تحديث الصفحة",
+      onRetry: () => loadTeacherExams(teacherId),
+    });
   }
 }
 
