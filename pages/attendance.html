@@ -6,6 +6,12 @@
   <title>الحضور - قلم أحمر</title>
   <meta name="theme-color" content="#c0392b" />
   <link rel="manifest" href="../manifest.json" />
+  <script>
+  if (localStorage.getItem('qalam_theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+    </script>
+>
 
   <link rel="stylesheet" href="../assets/css/main.css" />
   <link rel="stylesheet" href="../assets/css/rtl.css" />

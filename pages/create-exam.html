@@ -6,7 +6,13 @@
   <title>قلم أحمر - إنشاء امتحان</title>
   <link rel="manifest" href="../manifest.json">
   <meta name="theme-color" content="#c0392b">
+
   <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <script>
+  if (localStorage.getItem('qalam_theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  </script>
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/rtl.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
