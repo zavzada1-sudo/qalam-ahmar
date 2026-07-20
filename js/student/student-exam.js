@@ -9,6 +9,8 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showToast } from "../shared/ui.js";
 
+import "../shared/theme.js";
+
 // ------- عناصر الصفحة -------
 const loadingView = document.getElementById("loadingView");
 const errorView = document.getElementById("errorView");

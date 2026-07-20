@@ -8,6 +8,8 @@ import { onAuthStateChanged, signOut }
 import { doc, getDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+import "../shared/theme.js";
+
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
 const menuToggle = document.getElementById("menuToggle");

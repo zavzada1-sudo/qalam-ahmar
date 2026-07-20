@@ -8,6 +8,11 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut }
 import { doc, getDoc } 
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+import "../shared/theme.js";
+
+
+
+
 const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");

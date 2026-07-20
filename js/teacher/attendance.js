@@ -18,6 +18,8 @@ import { onAuthStateChanged }
 import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, documentId, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+import "../shared/theme.js";
+
 // ------- عناصر الصفحة -------
 const loadingEl     = document.getElementById("loadingState");
 const errorEl       = document.getElementById("errorState");

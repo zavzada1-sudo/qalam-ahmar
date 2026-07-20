@@ -8,6 +8,8 @@ import { onAuthStateChanged }
 import { doc, getDoc, collection, query, where, getDocs, documentId }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+import "../shared/theme.js";
+
 // ------- قراءة examId من الرابط: grades.html?examId=xxx -------
 const examId = new URLSearchParams(window.location.search).get("examId");
 

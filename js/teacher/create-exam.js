@@ -9,6 +9,8 @@ import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showConfirm } from "../shared/ui.js";
 
+import "../shared/theme.js";
+
 // ============================================
 // ⚠️ ضع الـ API Key بتاعك من imgbb.com هنا
 // ============================================

@@ -8,6 +8,8 @@ import { onAuthStateChanged }
 import { doc, getDoc }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+import "../shared/theme.js";
+
 const loadingView = document.getElementById("loadingView");
 const errorView = document.getElementById("errorView");
 const printView = document.getElementById("printView");

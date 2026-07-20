@@ -9,6 +9,8 @@ import { doc, getDoc, updateDoc, collection, query, where, getDocs, arrayUnion }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showToast, showConfirm } from "../shared/ui.js";
 
+import "../shared/theme.js";
+
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
 const menuToggle = document.getElementById("menuToggle");

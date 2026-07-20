@@ -9,6 +9,8 @@ import { doc, setDoc }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { reserveStudentCode } from "../shared/student-code.js";
 
+import "../shared/theme.js";
+
 let selectedRole = "teacher"; // القيمة الافتراضية
 
 // ------- التبديل بين تابي "مدرس" و "طالب" -------
