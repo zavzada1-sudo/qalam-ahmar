@@ -99,39 +99,6 @@
   --font: 'Cairo', 'Segoe UI', Tahoma, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* ---------- 1ب. الوضع الداكن ---------- */
-/* بيتفعّل تلقائيًا حسب إعداد نظام الجهاز، أو يدويًا عبر data-theme على <html> */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --primary: #e0574a;
-    --primary-dark: #ec6b5e;
-    --primary-light: #3a2220;
-    --primary-lighter: #2e1a18;
-
-    --blue: #5dade2;
-    --blue-light: #1c2b38;
-    --green: #4cd787;
-    --green-light: #16301f;
-    --orange: #f0985a;
-    --orange-light: #3a2a16;
-    --purple: #b980d1;
-    --purple-light: #2c1f33;
-
-    --bg: #14161a;
-    --bg-subtle: #23262c;
-    --surface: #1e2126;
-    --text: #eef0f3;
-    --text-muted: #a4acb8;
-    --text-light: #737b87;
-    --border: #33373f;
-
-    --error: #e0574a;
-    --success: #4cd787;
-
-    --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.45);
-  }
-}
 :root[data-theme="dark"] {
   --primary: #e0574a;
   --primary-dark: #ec6b5e;

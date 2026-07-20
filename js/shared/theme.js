@@ -7,11 +7,9 @@
 
 const STORAGE_KEY = "qalam_theme";
 
-// ------- تحديد الوضع المفضّل: اختيار محفوظ، وإلا إعداد نظام الجهاز -------
+// ------- تحديد الوضع المفضّل: الافتراضي دايمًا فاتح، إلا لو المستخدم اختار داكن قبل كده -------
 function getPreferredTheme() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "light" || saved === "dark") return saved;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
 }
 
 // ------- تطبيق الوضع على الصفحة -------
@@ -29,7 +27,7 @@ function injectToggleButton() {
   style.textContent = `
     #qa-theme-toggle {
       position: fixed;
-      bottom: 20px;
+      bottom: 92px;
       inset-inline-start: 20px;
       z-index: 500;
       width: 44px;
@@ -47,7 +45,7 @@ function injectToggleButton() {
     }
     #qa-theme-toggle:hover { transform: scale(1.08); }
     @media (max-width: 768px) {
-      #qa-theme-toggle { bottom: 16px; inset-inline-start: 16px; width: 40px; height: 40px; font-size: 17px; }
+      #qa-theme-toggle { bottom: 84px; inset-inline-start: 16px; width: 40px; height: 40px; font-size: 17px; }
     }
   `;
   document.head.appendChild(style);
