@@ -31,7 +31,7 @@ import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
-  collection, query, where, getDocs, documentId, serverTimestamp
+  collection, query, where, getDocs, documentId, serverTimestamp , onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 import { showToast, showConfirm } from "../shared/ui.js";
@@ -124,6 +124,7 @@ let selectedDate     = todayStr();
 
 let groupStudents    = [];     // [{ uid, fullName, studentId }]
 let recordsMap       = new Map(); // studentUid → سجل الحضور
+let unsubscribeRecords = null;   // مرجع الاستماع الحالي لسجلات الحضور
 
 // ============================================
 // نقطة البداية
@@ -257,9 +258,7 @@ groupSelect.addEventListener("change", async () => {
 // ============================================
 dateInput.addEventListener("change", async () => {
   selectedDate = dateInput.value || todayStr();
-
   dateHintEl.classList.toggle("hidden", selectedDate === todayStr());
-
   if (selectedGroup) await loadAttendanceView();
 });
 
@@ -278,26 +277,46 @@ async function loadAttendanceView() {
   renderSkeleton(studentsListEl, { type: "row", count: 5 });
 
   try {
-    const studentIds = selectedGroup.studentIds || [];
+    // بيانات الطلبة بتتغير نادر، فبتفضل getDocs عادية
+    groupStudents = await fetchUsersByIds(selectedGroup.studentIds || []);
 
-    const [students, records] = await Promise.all([
-      fetchUsersByIds(studentIds),
-      fetchAttendanceRecords(selectedGroup.id, selectedDate)
-    ]);
-
-    groupStudents = students;
-
-    recordsMap = new Map();
-    records.forEach((r) => recordsMap.set(r.studentUid, r));
-
-    renderSessionState();
-    renderList();
+    // سجلات الحضور: onSnapshot عشان أي طالب يعمل سكان بالـ QR
+    // يظهر في القايمة فورًا من غير ما تعمل Refresh
+    listenToAttendanceRecords(selectedGroup.id, selectedDate);
 
   } catch (error) {
     console.error("Load attendance view error:", error);
     studentsListEl.innerHTML = "";
     showToast("تعذر تحميل بيانات الحضور.", "error");
   }
+}
+
+// ============================================
+// استماع مستمر لسجلات الحضور (بدل جلبها مرة واحدة)
+// ============================================
+function listenToAttendanceRecords(groupId, date) {
+  // نوقف أي استماع قديم الأول (يمنع تراكم استماعات على مجموعات/تواريخ سابقة)
+  if (unsubscribeRecords) unsubscribeRecords();
+
+  unsubscribeRecords = onSnapshot(
+    query(
+      collection(db, "attendance"),
+      where("teacherId", "==", currentTeacherId),
+      where("groupId", "==", groupId),
+      where("date", "==", date)
+    ),
+    (snap) => {
+      recordsMap = new Map();
+      snap.forEach((d) => recordsMap.set(d.data().studentUid, { id: d.id, ...d.data() }));
+
+      renderSessionState();
+      renderList();
+    },
+    (error) => {
+      console.error("Attendance records listen error:", error);
+      showToast("تعذر متابعة تحديثات الحضور.", "error");
+    }
+  );
 }
 
 // ============================================
