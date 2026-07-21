@@ -67,7 +67,7 @@ onAuthStateChanged(auth, async (user) => {
 
     // تحميل الامتحانات والإحصائيات
     // تحميل الامتحانات والإحصائيات
-    await loadTeacherExams(user.uid);
+   loadTeacherExams(user.uid);
     await loadClassesAndStudentsCount(user.uid);
 
   } catch (error) {
