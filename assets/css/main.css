@@ -937,6 +937,12 @@ button { font-family: inherit; cursor: pointer; }
   min-width: 0;
   width: 100%;
 }
+/* الدائرة بتاعة الإجابة الصحيحة: نلغي عليها width:100% اللي بييجيلها
+   من قاعدة .form-group input العامة، عشان متاخدش عرض الصف كله */
+.q-correct-radio {
+  width: auto;
+  flex: 0 0 auto;
+}
 
 .exam-bottom-actions {
   display: flex; justify-content: space-between; align-items: center;
