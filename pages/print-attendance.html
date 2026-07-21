@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>كشف الحضور والغياب - قلم أحمر</title>
+  <meta name="theme-color" content="#c0392b" />
+  <link rel="manifest" href="../manifest.json" />
+
+  <script>
+    if (localStorage.getItem('qalam_theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/rtl.css" />
+</head>
+<body>
+
+  <div class="report-page">
+
+    <!-- ===== مسار التنقل ===== -->
+    <div class="breadcrumb no-print">
+      <a href="teacher-dashboard.html" class="breadcrumb-item">لوحة التحكم</a>
+      <span class="breadcrumb-separator">›</span>
+      <a href="attendance.html" class="breadcrumb-item">الحضور</a>
+      <span class="breadcrumb-separator">›</span>
+      <span class="breadcrumb-item active">كشف الغياب</span>
+    </div>
+
+    <!-- ===== حالة التحميل ===== -->
+    <div id="loadingState" class="exam-loading no-print">
+      <div class="loading-spinner"></div>
+      <p>بنحمّل البيانات...</p>
+    </div>
+
+    <!-- ===== حالة الخطأ ===== -->
+    <div id="errorState" class="exam-error hidden no-print">
+      <div class="error-icon">⚠️</div>
+      <h3 id="errorText"></h3>
+      <a href="attendance.html" class="btn btn-primary">رجوع للحضور</a>
+    </div>
+
+    <!-- ===== المحتوى ===== -->
+    <div id="contentWrapper" class="hidden">
+
+      <div class="report-header no-print">
+        <h1>كشف الحضور والغياب</h1>
+        <p>اختر المجموعة والفترة، وبعدين اطبع الكشف أو احفظه PDF.</p>
+      </div>
+
+      <!-- ===== أدوات التقرير ===== -->
+      <div class="report-controls no-print">
+
+        <div class="report-controls-row">
+          <div class="form-group">
+            <label for="gradeSelect">السنة الدراسية</label>
+            <select id="gradeSelect" class="att-select">
+              <option value="">اختر السنة...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="groupSelect">المجموعة</label>
+            <select id="groupSelect" class="att-select" disabled>
+              <option value="">اختر المجموعة...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="modeSelect">نوع الكشف</label>
+            <select id="modeSelect" class="att-select">
+              <option value="single">يوم واحد</option>
+              <option value="range">فترة (من - إلى)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="report-controls-row">
+          <!-- يوم واحد -->
+          <div class="form-group" id="singleDateWrap">
+            <label for="dateInput">التاريخ</label>
+            <input type="date" id="dateInput" class="att-select" />
+          </div>
+
+          <!-- فترة -->
+          <div class="form-group hidden" id="fromWrap">
+            <label for="fromInput">من تاريخ</label>
+            <input type="date" id="fromInput" class="att-select" />
+          </div>
+
+          <div class="form-group hidden" id="toWrap">
+            <label for="toInput">إلى تاريخ</label>
+            <input type="date" id="toInput" class="att-select" />
+          </div>
+
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button id="generateBtn" class="btn btn-primary" type="button">
+              اعرض الكشف
+            </button>
+          </div>
+        </div>
+
+        <p class="report-hint">
+          ⓘ الكشف بيعرض الأيام اللي كان فيها حصة بس. اليوم اللي مافيهوش حصة مش
+          بيتحسب غياب.
+        </p>
+      </div>
+
+      <!-- ===== شريط الطباعة ===== -->
+      <div id="printBar" class="report-print-bar no-print hidden">
+        <button id="printBtn" class="btn btn-primary" type="button">
+          🖨 اطبع / احفظ PDF
+        </button>
+        <span class="report-print-hint">
+          في نافذة الطباعة اختار "حفظ كـ PDF" لو عايز نسخة إلكترونية.
+        </span>
+      </div>
+
+      <!-- ===== التقرير ===== -->
+      <div id="reportArea" class="report-area hidden">
+
+        <div class="report-doc-head">
+          <h2 id="reportTitle">كشف الحضور والغياب</h2>
+          <p id="reportMeta"></p>
+        </div>
+
+        <div id="reportSummary" class="report-summary"></div>
+
+        <div class="report-table-wrap">
+          <table id="reportTable" class="report-table"></table>
+        </div>
+
+        <div class="report-footer">
+          <div class="report-sign">توقيع المدرس: ..............................</div>
+          <div class="report-sign">التاريخ: ..............................</div>
+        </div>
+      </div>
+
+      <!-- ===== حالة "مفيش بيانات" ===== -->
+      <div id="reportEmpty" class="empty-state hidden no-print">
+        <div class="empty-icon">📭</div>
+        <h3>مفيش بيانات</h3>
+        <p>مفيش حصص مسجّلة للمجموعة دي في الفترة المختارة.</p>
+      </div>
+
+      <!-- ===== حالة البداية ===== -->
+      <div id="startPrompt" class="empty-state no-print">
+        <div class="empty-icon">🗂</div>
+        <h3>اختر المجموعة والفترة</h3>
+        <p>حدد البيانات من فوق ودوس "اعرض الكشف".</p>
+      </div>
+
+    </div>
+  </div>
+
+  <style>
+    .report-page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .report-header h1 {
+      font-size: 22px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .report-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    /* ---------- أدوات التقرير ---------- */
+    .report-controls {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .report-controls-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+    .report-controls-row + .report-controls-row { margin-top: 12px; }
+    .report-controls .form-group { margin-bottom: 0; }
+    .report-controls .btn { width: 100%; }
+
+    .att-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border, #ddd);
+      border-radius: var(--radius-sm, 8px);
+      font-family: inherit;
+      font-size: .9rem;
+      background: var(--input-bg, #fff);
+      color: var(--text);
+    }
+    .att-select:focus { outline: none; border-color: var(--primary); }
+    .att-select:disabled { opacity: .55; cursor: not-allowed; }
+
+    .report-hint {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 12px;
+      line-height: 1.7;
+    }
+
+    /* ---------- شريط الطباعة ---------- */
+    .report-print-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .report-print-hint {
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    /* ---------- التقرير ---------- */
+    .report-area {
+      background: #fff;
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 26px;
+      color: #222;
+    }
+
+    .report-doc-head {
+      text-align: center;
+      border-bottom: 2px solid #c0392b;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .report-doc-head h2 {
+      font-size: 20px;
+      color: #c0392b;
+      margin-bottom: 4px;
+    }
+    .report-doc-head p {
+      font-size: 13px;
+      color: #555;
+    }
+
+    /* ملخص */
+    .report-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .report-summary-item {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .report-summary-item strong {
+      display: block;
+      font-size: 19px;
+      color: #c0392b;
+      margin-bottom: 2px;
+    }
+    .report-summary-item span {
+      font-size: 11.5px;
+      color: #666;
+    }
+
+    /* الجدول */
+    .report-table-wrap { overflow-x: auto; }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .report-table th,
+    .report-table td {
+      border: 1px solid #ddd;
+      padding: 7px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .report-table th {
+      background: #f5f5f5;
+      font-weight: 700;
+      font-size: 11.5px;
+      color: #333;
+    }
+    .report-table td.cell-name {
+      text-align: start;
+      white-space: normal;
+      min-width: 140px;
+      font-weight: 600;
+    }
+    .report-table td.cell-code {
+      font-family: monospace;
+      letter-spacing: .5px;
+    }
+    .report-table tbody tr:nth-child(even) { background: #fafafa; }
+
+    /* رموز الحالة */
+    .mark-present { color: #27ae60; font-weight: 700; }
+    .mark-late    { color: #e67e22; font-weight: 700; }
+    .mark-absent  { color: #c0392b; font-weight: 700; }
+
+    /* تذييل التوقيع */
+    .report-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1px solid #ddd;
+      font-size: 13px;
+      color: #444;
+    }
+
+    /* ---------- الطباعة ---------- */
+    @media print {
+      .no-print { display: none !important; }
+      .breadcrumb { display: none !important; }
+
+      .report-page { padding: 0; max-width: none; }
+
+      .report-area {
+        border: none;
+        border-radius: 0;
+        padding: 0;
+      }
+
+      .report-table { font-size: 10.5px; }
+      .report-table th,
+      .report-table td { padding: 4px 3px; }
+
+      .report-table-wrap { overflow: visible; }
+
+      /* منع قطع الصفوف بين الصفحات */
+      .report-table tr { page-break-inside: avoid; }
+
+      @page { margin: 12mm; }
+    }
+  </style>
+
+  <script type="module" src="../js/teacher/print-attendance.js"></script>
+</body>
+</html>

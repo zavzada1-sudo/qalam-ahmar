@@ -2,594 +2,1015 @@
 // Attendance Logic - تسجيل حضور الطلاب
 // ============================================
 //
-// فكرة التخزين:
-// كل "جلسة حضور" = مستند واحد في attendanceSessions فيه مصفوفة records
-// بكل طلاب المجموعة وحالة كل واحد. نفس أسلوب أسئلة الامتحان (مصفوفة جوّا
-// المستند مش subcollection) — أرخص وأسرع وحفظ ذرّي بعملية كتابة واحدة.
+// فكرة النظام:
 //
-// معرّف المستند ثابت: `${groupId}_${date}`
-// كده لو المدرس فتح نفس المجموعة بنفس التاريخ تاني، بيعدّل على نفس الجلسة
-// بدل ما يعمل نسخة مكررة.
+// 1) الـ QR مربوط بالمدرس مش بالمجموعة:
+//    users/{teacherId}.attendanceToken  ← توكن ثابت، بيتجدد بزرار بس
+//    فالمدرس بيطبع كود واحد بس مدى الحياة ويعلّقه.
+//
+// 2) "الحضور المفتوح دلوقتي" متخزّن على المدرس كمان:
+//    users/{teacherId}.activeAttendance = { gradeId, groupId, groupName, date }
+//    الطالب لما يعمل سكان، الصفحة بتقرا الحقل ده وتعرف يسجّله في أنهي مجموعة.
+//
+// 3) الغياب ضمني: مفيش سجل = غايب. مش بنكتب سجل لكل طالب مقدمًا.
+//
+// 4) الطالب مينفعش يسجّل نفسه إلا لو فعلاً في المجموعة المفتوحة
+//    (متفروض في Firestore Rules مش هنا بس).
+//    المدرس هو الوحيد اللي يقدر يسجّل طالب من مجموعة تانية، وساعتها
+//    بيشوف تنبيه بمجموعته الحقيقية.
+//
+// 5) "متأخر" يدوي بس — الـ QR دايمًا بيسجّل "حاضر".
+//
+// معرّفات المستندات:
+//   attendanceSessions/{groupId}_{date}
+//   attendance/{groupId}_{date}_{studentUid}
 // ============================================
 
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, documentId, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import {
+  doc, getDoc, setDoc, updateDoc, deleteDoc,
+  collection, query, where, getDocs, documentId, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
+import { showToast, showConfirm } from "../shared/ui.js";
+import { renderSkeleton } from "../shared/states.js";
+import { isValidCodeFormat } from "../shared/student-code.js";
 import "../shared/theme.js";
 
-// ------- عناصر الصفحة -------
-const loadingEl     = document.getElementById("loadingState");
-const errorEl       = document.getElementById("errorState");
-const errorTextEl   = document.getElementById("errorText");
-const contentEl     = document.getElementById("contentWrapper");
+// ============================================
+// عناصر الصفحة
+// ============================================
+const loadingEl      = document.getElementById("loadingState");
+const errorEl        = document.getElementById("errorState");
+const errorTextEl    = document.getElementById("errorText");
+const contentEl      = document.getElementById("contentWrapper");
 
-const gradeSelect   = document.getElementById("gradeSelect");
-const groupSelect   = document.getElementById("groupSelect");
-const dateInput     = document.getElementById("dateInput");
+const gradeSelect    = document.getElementById("gradeSelect");
+const groupSelect    = document.getElementById("groupSelect");
+const dateInput      = document.getElementById("dateInput");
+const dateHintEl     = document.getElementById("dateHint");
 
-const sheetEl       = document.getElementById("attendanceSheet");
-const sheetEmptyEl  = document.getElementById("sheetEmpty");
-const studentsListEl= document.getElementById("studentsList");
-const searchInput   = document.getElementById("searchInput");
+const sessionCard    = document.getElementById("sessionCard");
+const sessionBadge   = document.getElementById("sessionBadge");
+const sessionTitle   = document.getElementById("sessionTitle");
+const sessionSubtitle= document.getElementById("sessionSubtitle");
+const toggleSessionBtn = document.getElementById("toggleSessionBtn");
 
-const statTotal     = document.getElementById("statTotal");
-const statPresent   = document.getElementById("statPresent");
-const statAbsent    = document.getElementById("statAbsent");
-const statLate      = document.getElementById("statLate");
+const qrCodeBox      = document.getElementById("qrCodeBox");
+const qrTeacherName  = document.getElementById("qrTeacherName");
+const printQrBtn     = document.getElementById("printQrBtn");
+const renewTokenBtn  = document.getElementById("renewTokenBtn");
 
-const markAllPresent= document.getElementById("markAllPresent");
-const markAllAbsent = document.getElementById("markAllAbsent");
-const saveBtn       = document.getElementById("saveBtn");
-const saveMessage   = document.getElementById("saveMessage");
-const savedHint     = document.getElementById("savedHint");
+const manualCard     = document.getElementById("manualCard");
+const manualCodeInput= document.getElementById("manualCodeInput");
+const manualStatusSelect = document.getElementById("manualStatusSelect");
+const manualSubmitBtn= document.getElementById("manualSubmitBtn");
 
-const historyListEl = document.getElementById("historyList");
-const historyEmptyEl= document.getElementById("historyEmpty");
+const statsWrapper   = document.getElementById("statsWrapper");
+const statTotal      = document.getElementById("statTotal");
+const statPresent    = document.getElementById("statPresent");
+const statLate       = document.getElementById("statLate");
+const statAbsent     = document.getElementById("statAbsent");
 
-// ------- الحالة الحالية للصفحة -------
-let currentTeacherId = null;
-let teacherGrades    = [];   // كل السنوات الدراسية للمدرس
-let teacherGroups    = [];   // كل المجموعات للمدرس
-let groupSessions    = [];   // جلسات الحضور للمجموعة المختارة
-let currentRecords   = [];   // [{ studentId, studentName, studentCode, status }]
-let isExistingSession = false; // هل التاريخ ده متسجّل قبل كده؟
+const listWrapper    = document.getElementById("listWrapper");
+const searchInput    = document.getElementById("searchInput");
+const filterSelect   = document.getElementById("filterSelect");
+const studentsListEl = document.getElementById("studentsList");
+const listEmptyEl    = document.getElementById("listEmpty");
 
-// الحالات المتاحة
-const STATUS = { PRESENT: "present", ABSENT: "absent", LATE: "late" };
-
-const STATUS_LABELS = {
-  [STATUS.PRESENT]: "حاضر",
-  [STATUS.ABSENT]: "غايب",
-  [STATUS.LATE]: "متأخر"
-};
+const pickPrompt     = document.getElementById("pickPrompt");
+const printReportLink= document.getElementById("printReportLink");
 
 // ============================================
-// حماية الصفحة: لازم مدرس مسجل دخول
+// حالة الصفحة (State)
+// ============================================
+let currentTeacherId = null;
+let teacherData      = null;   // مستند المدرس كامل
+let allGrades        = [];     // [{ id, gradeName }]
+let allGroups        = [];     // [{ id, gradeId, groupName, studentIds[] }]
+
+let selectedGroup    = null;   // كائن المجموعة المختارة
+let selectedDate     = todayStr();
+
+let groupStudents    = [];     // [{ uid, fullName, studentId }]
+let recordsMap       = new Map(); // studentUid → سجل الحضور
+
+// ============================================
+// نقطة البداية
 // ============================================
 onAuthStateChanged(auth, async (user) => {
+  // مش مسجّل دخول؟ روح لصفحة الدخول
   if (!user) {
     window.location.href = "../index.html";
     return;
   }
 
   try {
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (!userDoc.exists() || userDoc.data().role !== "teacher") {
-      window.location.href = "../index.html";
+    currentTeacherId = user.uid;
+
+    // ---- نقرا مستند المدرس ونتأكد إنه فعلاً مدرس ----
+    const userSnap = await getDoc(doc(db, "users", currentTeacherId));
+
+    if (!userSnap.exists()) {
+      showError("الحساب غير مكتمل. كلّم الدعم.");
       return;
     }
 
-    currentTeacherId = user.uid;
+    teacherData = userSnap.data();
+
+    if (teacherData.role !== "teacher") {
+      showError("الصفحة دي للمدرسين بس.");
+      return;
+    }
+
+    // ---- نتأكد إن عنده توكن للـ QR، ولو مش عنده نولّدله واحد ----
+    if (!teacherData.attendanceToken) {
+      const newToken = generateToken();
+      await updateDoc(doc(db, "users", currentTeacherId), {
+        attendanceToken: newToken
+      });
+      teacherData.attendanceToken = newToken;
+    }
+
+    // ---- نحمّل السنين والمجموعات ----
     await loadGradesAndGroups();
+
+    // ---- نجهّز الواجهة ----
+    dateInput.value = selectedDate;
+    renderQrCode();
+    qrTeacherName.textContent = `أ/ ${teacherData.fullName || ""}`;
+
+    loadingEl.classList.add("hidden");
+    contentEl.classList.remove("hidden");
+
   } catch (error) {
-    console.error("[attendance] خطأ في التحقق من الحساب:", error.code, error.message);
-    showError("حصلت مشكلة في التحقق من حسابك، حاول تحديث الصفحة");
+    console.error("Attendance init error:", error);
+    showError("تعذر تحميل الصفحة. تأكد من اتصالك بالإنترنت.");
   }
 });
 
 // ============================================
-// تحميل السنوات والمجموعات
+// تحميل السنين والمجموعات بتاعة المدرس
 // ============================================
+// ملاحظة مهمة: لازم where("teacherId", "==", ...) في الاتنين عشان
+// يطابق شرط الـ Security Rules، وإلا Firestore بيرفض الاستعلام كله.
 async function loadGradesAndGroups() {
-  try {
-    // بنجيب الاتنين بالتوازي عشان أسرع
-    const [gradesSnap, groupsSnap] = await Promise.all([
-      getDocs(query(collection(db, "grades"), where("teacherId", "==", currentTeacherId))),
-      getDocs(query(collection(db, "groups"), where("teacherId", "==", currentTeacherId)))
-    ]);
+  const [gradesSnap, groupsSnap] = await Promise.all([
+    getDocs(query(collection(db, "grades"), where("teacherId", "==", currentTeacherId))),
+    getDocs(query(collection(db, "groups"), where("teacherId", "==", currentTeacherId)))
+  ]);
 
-    teacherGrades = gradesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    teacherGroups = groupsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  allGrades = [];
+  gradesSnap.forEach((d) => allGrades.push({ id: d.id, ...d.data() }));
 
-    if (!teacherGrades.length) {
-      showError("لسه مضفتش سنوات دراسية. روح لصفحة الفصول وضيف سنة ومجموعة الأول.");
-      return;
-    }
+  allGroups = [];
+  groupsSnap.forEach((d) => allGroups.push({ id: d.id, ...d.data() }));
 
-    // ترتيب أبجدي
-    teacherGrades.sort((a, b) => (a.gradeName || "").localeCompare(b.gradeName || "", "ar"));
+  // نملا قائمة السنين
+  gradeSelect.innerHTML = `<option value="">اختر السنة...</option>`;
+  allGrades.forEach((g) => {
+    const opt = document.createElement("option");
+    opt.value = g.id;
+    opt.textContent = g.gradeName || "بدون اسم";
+    gradeSelect.appendChild(opt);
+  });
 
-    // تعبئة قائمة السنوات
-    gradeSelect.innerHTML = `<option value="">اختار السنة الدراسية</option>` +
-      teacherGrades.map((g) =>
-        `<option value="${g.id}">${escapeHtml(g.gradeName || "بدون اسم")}</option>`
-      ).join("");
-
-    // التاريخ الافتراضي = النهارده
-    dateInput.value = todayString();
-
-    showContent();
-  } catch (error) {
-    console.error("[attendance] فشل تحميل السنوات/المجموعات:", error.code, error.message);
-    showError("تعذر تحميل الفصول، حاول تحديث الصفحة");
+  if (allGrades.length === 0) {
+    showToast("لسه مضفتش سنين دراسية. ضيفها من صفحة الفصول الأول.", "error");
   }
 }
 
-// ------- لما المدرس يختار سنة → نعرض مجموعاتها -------
+// ============================================
+// اختيار السنة → نملا المجموعات
+// ============================================
 gradeSelect.addEventListener("change", () => {
   const gradeId = gradeSelect.value;
 
-  resetSheet();
+  groupSelect.innerHTML = `<option value="">اختر المجموعة...</option>`;
+  groupSelect.disabled = !gradeId;
 
   if (!gradeId) {
-    groupSelect.innerHTML = `<option value="">اختار المجموعة</option>`;
-    groupSelect.disabled = true;
+    resetGroupView();
     return;
   }
 
-  const groups = teacherGroups
-    .filter((g) => g.gradeId === gradeId)
-    .sort((a, b) => (a.groupName || "").localeCompare(b.groupName || "", "ar"));
+  const groups = allGroups.filter((g) => g.gradeId === gradeId);
 
-  if (!groups.length) {
-    groupSelect.innerHTML = `<option value="">مفيش مجموعات في السنة دي</option>`;
-    groupSelect.disabled = true;
-    return;
+  groups.forEach((g) => {
+    const opt = document.createElement("option");
+    opt.value = g.id;
+    opt.textContent = g.groupName || "بدون اسم";
+    groupSelect.appendChild(opt);
+  });
+
+  if (groups.length === 0) {
+    showToast("السنة دي مفيهاش مجموعات لسه.", "error");
   }
 
-  groupSelect.innerHTML = `<option value="">اختار المجموعة</option>` +
-    groups.map((g) =>
-      `<option value="${g.id}">${escapeHtml(g.groupName || "بدون اسم")}</option>`
-    ).join("");
-  groupSelect.disabled = false;
+  resetGroupView();
 });
 
-// ------- لما يختار مجموعة أو يغيّر التاريخ → نحمّل كشف الحضور -------
-groupSelect.addEventListener("change", loadAttendanceSheet);
-dateInput.addEventListener("change", loadAttendanceSheet);
-
 // ============================================
-// تحميل كشف الحضور للمجموعة والتاريخ المختارين
+// اختيار المجموعة → نحمّل الطلبة والحضور
 // ============================================
-async function loadAttendanceSheet() {
+groupSelect.addEventListener("change", async () => {
   const groupId = groupSelect.value;
-  const date = dateInput.value;
 
-  if (!groupId || !date) {
-    resetSheet();
+  if (!groupId) {
+    resetGroupView();
     return;
   }
 
-  sheetEl.classList.add("hidden");
-  sheetEmptyEl.classList.remove("hidden");
-  sheetEmptyEl.innerHTML = `<p class="loading-text">بنحمّل كشف الحضور...</p>`;
+  selectedGroup = allGroups.find((g) => g.id === groupId) || null;
+  await loadAttendanceView();
+});
+
+// ============================================
+// تغيير التاريخ → نعيد التحميل
+// ============================================
+dateInput.addEventListener("change", async () => {
+  selectedDate = dateInput.value || todayStr();
+
+  // تنبيه لو التاريخ مش النهاردة
+  dateHintEl.classList.toggle("hidden", selectedDate === todayStr());
+
+  if (selectedGroup) await loadAttendanceView();
+});
+
+// ============================================
+// تحميل شاشة الحضور للمجموعة + التاريخ المختارين
+// ============================================
+async function loadAttendanceView() {
+  if (!selectedGroup) return;
+
+  // نظهر الأقسام المخفية
+  pickPrompt.classList.add("hidden");
+  sessionCard.classList.remove("hidden");
+  manualCard.classList.remove("hidden");
+  statsWrapper.classList.remove("hidden");
+  listWrapper.classList.remove("hidden");
+
+  // سكيلتون أثناء التحميل
+  renderSkeleton(studentsListEl, { type: "row", count: 5 });
 
   try {
-    const group = teacherGroups.find((g) => g.id === groupId);
-    const studentIds = group?.studentIds || [];
+    const studentIds = selectedGroup.studentIds || [];
 
-    if (!studentIds.length) {
-      sheetEmptyEl.innerHTML = `
-        <div class="empty-icon">👥</div>
-        <h3>المجموعة دي فاضية</h3>
-        <p>مفيش طلاب منضمين للمجموعة دي لسه.</p>
-      `;
+    // نحمّل بيانات الطلبة وسجلات الحضور مع بعض
+    const [students, records] = await Promise.all([
+      fetchUsersByIds(studentIds),
+      fetchAttendanceRecords(selectedGroup.id, selectedDate)
+    ]);
+
+    groupStudents = students;
+
+    recordsMap = new Map();
+    records.forEach((r) => recordsMap.set(r.studentUid, r));
+
+    renderSessionState();
+    renderList();
+
+  } catch (error) {
+    console.error("Load attendance view error:", error);
+    studentsListEl.innerHTML = "";
+    showToast("تعذر تحميل بيانات الحضور.", "error");
+  }
+}
+
+// ============================================
+// جلب بيانات مستخدمين بالـ IDs
+// ============================================
+// Firestore بيسمح بـ 10 عناصر بس في "in"، فبنقسّمهم مجموعات
+async function fetchUsersByIds(ids) {
+  if (!ids || ids.length === 0) return [];
+
+  const results = [];
+
+  for (let i = 0; i < ids.length; i += 10) {
+    const chunk = ids.slice(i, i + 10);
+    const snap = await getDocs(
+      query(collection(db, "users"), where(documentId(), "in", chunk))
+    );
+    snap.forEach((d) => results.push({ uid: d.id, ...d.data() }));
+  }
+
+  // ترتيب أبجدي بالاسم
+  results.sort((a, b) =>
+    (a.fullName || "").localeCompare(b.fullName || "", "ar")
+  );
+
+  return results;
+}
+
+// ============================================
+// جلب سجلات الحضور لمجموعة في تاريخ معيّن
+// ============================================
+async function fetchAttendanceRecords(groupId, date) {
+  const snap = await getDocs(query(
+    collection(db, "attendance"),
+    where("teacherId", "==", currentTeacherId),  // لازم يطابق الـ Rules
+    where("groupId", "==", groupId),
+    where("date", "==", date)
+  ));
+
+  const records = [];
+  snap.forEach((d) => records.push({ id: d.id, ...d.data() }));
+  return records;
+}
+
+// ============================================
+// عرض حالة الحضور (مفتوح / مقفول)
+// ============================================
+function renderSessionState() {
+  const active = teacherData.activeAttendance;
+  const isToday = selectedDate === todayStr();
+
+  // الحضور مفتوح للمجموعة دي النهاردة؟
+  const isOpenForThisGroup =
+    active &&
+    active.groupId === selectedGroup.id &&
+    active.date === todayStr();
+
+  if (isOpenForThisGroup) {
+    sessionBadge.textContent = "مفتوح";
+    sessionBadge.className = "att-badge open";
+    sessionTitle.textContent = "الحضور مفتوح دلوقتي";
+    sessionSubtitle.textContent =
+      "أي طالب في المجموعة دي يعمل سكان للكود هيتسجّل حاضر تلقائي.";
+    toggleSessionBtn.textContent = "اقفل الحضور";
+    toggleSessionBtn.className = "btn btn-outline";
+    toggleSessionBtn.disabled = false;
+
+  } else if (active && active.date === todayStr()) {
+    // مفتوح بس لمجموعة تانية
+    sessionBadge.textContent = "مقفول";
+    sessionBadge.className = "att-badge closed";
+    sessionTitle.textContent = "الحضور مفتوح لمجموعة تانية";
+    sessionSubtitle.textContent =
+      `دلوقتي مفتوح لـ "${active.groupName || "مجموعة تانية"}". لو فتحته هنا هيتقفل هناك.`;
+    toggleSessionBtn.textContent = "افتح الحضور هنا";
+    toggleSessionBtn.className = "btn btn-primary";
+    toggleSessionBtn.disabled = false;
+
+  } else {
+    sessionBadge.textContent = "مقفول";
+    sessionBadge.className = "att-badge closed";
+    sessionTitle.textContent = "الحضور مقفول";
+    sessionSubtitle.textContent = isToday
+      ? "افتح الحضور عشان الطلبة يقدروا يسجّلوا بالـ QR."
+      : "مش هتقدر تفتح الحضور في تاريخ قديم — سجّل يدويًا بس.";
+    toggleSessionBtn.textContent = "افتح الحضور دلوقتي";
+    toggleSessionBtn.className = "btn btn-primary";
+    toggleSessionBtn.disabled = !isToday;  // فتح الحضور للنهاردة بس
+  }
+}
+
+// ============================================
+// فتح / قفل الحضور
+// ============================================
+toggleSessionBtn.addEventListener("click", async () => {
+  if (!selectedGroup) return;
+
+  const active = teacherData.activeAttendance;
+  const today = todayStr();
+
+  const isOpenForThisGroup =
+    active && active.groupId === selectedGroup.id && active.date === today;
+
+  setButtonLoading(toggleSessionBtn, true);
+
+  try {
+    if (isOpenForThisGroup) {
+      // ---- قفل ----
+      await closeActiveSession();
+      showToast("تم قفل الحضور.", "success");
+
+    } else {
+      // ---- فتح ----
+      // لو فيه حضور مفتوح لمجموعة تانية، نقفله الأول
+      if (active && active.date === today) {
+        await closeActiveSession();
+      }
+
+      const sessionId = `${selectedGroup.id}_${today}`;
+
+      // نسجّل إن فيه حصة النهاردة (بيفرّق بين "مفيش حصة" و"الكل غاب")
+      await setDoc(doc(db, "attendanceSessions", sessionId), {
+        teacherId: currentTeacherId,
+        gradeId:   selectedGroup.gradeId,
+        groupId:   selectedGroup.id,
+        groupName: selectedGroup.groupName || "",
+        date:      today,
+        openedAt:  serverTimestamp(),
+        closedAt:  null
+      }, { merge: true });
+
+      const activeData = {
+        gradeId:   selectedGroup.gradeId,
+        groupId:   selectedGroup.id,
+        groupName: selectedGroup.groupName || "",
+        date:      today,
+        openedAt:  Date.now()
+      };
+
+      await updateDoc(doc(db, "users", currentTeacherId), {
+        activeAttendance: activeData
+      });
+
+      teacherData.activeAttendance = activeData;
+      showToast("الحضور اتفتح — الطلبة يقدروا يسجّلوا دلوقتي.", "success");
+    }
+
+    renderSessionState();
+
+  } catch (error) {
+    console.error("Toggle session error:", error);
+    showToast("تعذر تغيير حالة الحضور.", "error");
+  } finally {
+    setButtonLoading(toggleSessionBtn, false);
+  }
+});
+
+// ============================================
+// قفل الحضور المفتوح حاليًا (أيًا كانت مجموعته)
+// ============================================
+async function closeActiveSession() {
+  const active = teacherData.activeAttendance;
+  if (!active) return;
+
+  const sessionId = `${active.groupId}_${active.date}`;
+
+  // نحدّث وقت القفل في الجلسة (لو المستند اتمسح لأي سبب منوقعش الصفحة)
+  try {
+    await updateDoc(doc(db, "attendanceSessions", sessionId), {
+      closedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.warn("Close session doc warning:", error);
+  }
+
+  await updateDoc(doc(db, "users", currentTeacherId), {
+    activeAttendance: null
+  });
+
+  teacherData.activeAttendance = null;
+}
+
+// ============================================
+// توليد وعرض الـ QR
+// ============================================
+function renderQrCode() {
+  qrCodeBox.innerHTML = "";  // نفضّيه الأول عشان التجديد
+
+  const scanUrl =
+    `${window.location.origin}/pages/attendance-scan.html` +
+    `?t=${currentTeacherId}&k=${teacherData.attendanceToken}`;
+
+  new QRCode(qrCodeBox, {
+    text: scanUrl,
+    width: 190,
+    height: 190,
+    colorDark: "#2c3e50",
+    colorLight: "#ffffff"
+  });
+}
+
+// توليد توكن عشوائي (نستخدم crypto لو متاح)
+function generateToken() {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+
+  for (let i = 0; i < 24; i++) {
+    let rand;
+    if (window.crypto?.getRandomValues) {
+      const buf = new Uint32Array(1);
+      window.crypto.getRandomValues(buf);
+      rand = buf[0] % chars.length;
+    } else {
+      rand = Math.floor(Math.random() * chars.length);
+    }
+    token += chars[rand];
+  }
+
+  return token;
+}
+
+// ============================================
+// طباعة الكود
+// ============================================
+printQrBtn.addEventListener("click", () => {
+  window.print();
+});
+
+// ============================================
+// تجديد الكود (بيلغي أي كود مطبوع قديم)
+// ============================================
+renewTokenBtn.addEventListener("click", async () => {
+  const confirmed = await showConfirm({
+    title: "تجديد كود الحضور",
+    message:
+      "أي كود QR مطبوع قديم هيبطل يشتغل فورًا، وهتحتاج تطبع الجديد وتعلّقه. " +
+      "متأكد إنك عايز تجدّده؟",
+    confirmLabel: "أيوة، جدّده",
+    cancelLabel: "إلغاء",
+    danger: true
+  });
+
+  if (!confirmed) return;
+
+  setButtonLoading(renewTokenBtn, true);
+
+  try {
+    const newToken = generateToken();
+
+    await updateDoc(doc(db, "users", currentTeacherId), {
+      attendanceToken: newToken
+    });
+
+    teacherData.attendanceToken = newToken;
+    renderQrCode();
+
+    showToast("تم تجديد الكود. اطبع الكود الجديد وعلّقه.", "success");
+
+  } catch (error) {
+    console.error("Renew token error:", error);
+    showToast("تعذر تجديد الكود.", "error");
+  } finally {
+    setButtonLoading(renewTokenBtn, false);
+  }
+});
+
+// ============================================
+// التسجيل اليدوي بكود الطالب
+// ============================================
+manualSubmitBtn.addEventListener("click", registerManually);
+
+// الضغط على Enter في خانة الكود = تسجيل
+manualCodeInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    registerManually();
+  }
+});
+
+async function registerManually() {
+  if (!selectedGroup) {
+    showToast("اختر المجموعة الأول.", "error");
+    return;
+  }
+
+  // بحث غير حساس لحالة الأحرف: بنحوّل لكابيتال دايمًا
+  const code = manualCodeInput.value.trim().toUpperCase();
+
+  if (!code) {
+    showToast("اكتب كود الطالب.", "error");
+    manualCodeInput.focus();
+    return;
+  }
+
+  if (!isValidCodeFormat(code)) {
+    showToast("شكل الكود غلط. المفروض حرفين و3 أرقام (مثال: TK492).", "error");
+    manualCodeInput.focus();
+    return;
+  }
+
+  setButtonLoading(manualSubmitBtn, true);
+
+  try {
+    // ---- 1. ندوّر على الطالب بالكود ----
+    const snap = await getDocs(query(
+      collection(db, "users"),
+      where("studentId", "==", code)
+    ));
+
+    if (snap.empty) {
+      showToast(`مفيش طالب بالكود ${code}.`, "error");
       return;
     }
 
-    // ---- 1. جلب بيانات الطلاب ----
-    const students = await getStudentsByIds(studentIds);
+    const studentDoc = snap.docs[0];
+    const student = { uid: studentDoc.id, ...studentDoc.data() };
 
-    // ---- 2. جلب كل جلسات المجموعة (بنستخدمها للسجل وللتاريخ الحالي) ----
-    // مهم: شرط teacherId لازم يكون في الاستعلام عشان يطابق قاعدة الأمان
-    const sessionsSnap = await getDocs(query(
-      collection(db, "attendanceSessions"),
-      where("teacherId", "==", currentTeacherId),
-      where("groupId", "==", groupId)
-    ));
-
-    groupSessions = sessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    // ترتيب بالتاريخ تنازليًا (الأحدث الأول) — بنرتب هنا بدل orderBy
-    // عشان نتجنب الحاجة لفهرس مركّب في Firestore
-    groupSessions.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
-    // ---- 3. هل فيه جلسة متسجلة بالتاريخ ده؟ ----
-    const existing = groupSessions.find((s) => s.date === date);
-    isExistingSession = Boolean(existing);
-
-    // ---- 4. بناء السجلات ----
-    // لو فيه جلسة قديمة بنحمّل حالاتها، ولو جديدة الكل يبدأ "حاضر"
-    // (ده الافتراضي المعتاد — المدرس بيعلّم على الغايبين بس، أسرع بكتير)
-    const oldStatuses = new Map(
-      (existing?.records || []).map((r) => [r.studentId, r.status])
-    );
-
-    currentRecords = students.map((student) => ({
-      studentId: student.id,
-      studentName: student.fullName || "بدون اسم",
-      studentCode: student.studentId || "—",
-      status: oldStatuses.get(student.id) || STATUS.PRESENT
-    }));
-
-    // ترتيب أبجدي بالاسم
-    currentRecords.sort((a, b) => a.studentName.localeCompare(b.studentName, "ar"));
-
-    savedHint.textContent = isExistingSession
-      ? "التاريخ ده متسجّل قبل كده — أي حفظ هيعدّل عليه"
-      : "";
-
-    sheetEmptyEl.classList.add("hidden");
-    sheetEl.classList.remove("hidden");
-
-    renderStudents();
-    renderStats();
-    renderHistory();
-
-  } catch (error) {
-    console.error("[attendance] فشل تحميل كشف الحضور:", error.code, error.message);
-    sheetEmptyEl.innerHTML = `
-      <div class="empty-icon">⚠️</div>
-      <h3>تعذر تحميل الكشف</h3>
-      <p>حاول تحديث الصفحة.</p>
-    `;
-  }
-}
-
-// ------- جلب بيانات الطلاب بالـ IDs -------
-async function getStudentsByIds(studentIds) {
-  const students = [];
-
-  // استعلام "in" بيقبل 10 قيم كحد أقصى، فبنقسمهم لدفعات
-  for (const chunk of chunkArray(studentIds, 10)) {
-    const snap = await getDocs(query(
-      collection(db, "users"),
-      where(documentId(), "in", chunk)
-    ));
-    snap.forEach((userDoc) => {
-      students.push({ id: userDoc.id, ...userDoc.data() });
-    });
-  }
-
-  return students;
-}
-
-function chunkArray(arr, size) {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
-}
-
-// ============================================
-// عرض قائمة الطلاب مع أزرار الحالة
-// ============================================
-function renderStudents() {
-  const term = searchInput.value.trim().toLowerCase();
-
-  const visible = currentRecords.filter((r) =>
-    r.studentName.toLowerCase().includes(term) ||
-    String(r.studentCode).toLowerCase().includes(term)
-  );
-
-  if (!visible.length) {
-    studentsListEl.innerHTML = `<div class="gd-empty">مفيش طلاب مطابقين لبحثك</div>`;
-    return;
-  }
-
-  studentsListEl.innerHTML = visible.map((record) => `
-    <div class="gd-row att-row">
-      <div class="gd-row-info">
-        <div class="gd-row-name">${escapeHtml(record.studentName)}</div>
-        <div class="gd-row-code">كود الطالب: ${escapeHtml(String(record.studentCode))}</div>
-      </div>
-      <div class="att-status-group" role="group" aria-label="حالة الحضور">
-        ${buildStatusButton(record, STATUS.PRESENT)}
-        ${buildStatusButton(record, STATUS.LATE)}
-        ${buildStatusButton(record, STATUS.ABSENT)}
-      </div>
-    </div>
-  `).join("");
-}
-
-function buildStatusButton(record, status) {
-  const isActive = record.status === status;
-  return `
-    <button type="button"
-            class="att-status-btn ${status} ${isActive ? "active" : ""}"
-            data-student-id="${escapeHtml(record.studentId)}"
-            data-status="${status}"
-            aria-pressed="${isActive}">
-      ${STATUS_LABELS[status]}
-    </button>
-  `;
-}
-
-// ------- تغيير حالة طالب (event delegation) -------
-studentsListEl.addEventListener("click", (e) => {
-  const btn = e.target.closest(".att-status-btn");
-  if (!btn) return;
-
-  const studentId = btn.dataset.studentId;
-  const status = btn.dataset.status;
-
-  const record = currentRecords.find((r) => r.studentId === studentId);
-  if (!record) return;
-
-  record.status = status;
-
-  renderStudents();
-  renderStats();
-  clearSaveMessage();
-});
-
-// ------- أزرار التحديد السريع -------
-markAllPresent.addEventListener("click", () => setAllStatuses(STATUS.PRESENT));
-markAllAbsent.addEventListener("click", () => setAllStatuses(STATUS.ABSENT));
-
-function setAllStatuses(status) {
-  currentRecords.forEach((r) => { r.status = status; });
-  renderStudents();
-  renderStats();
-  clearSaveMessage();
-}
-
-// ============================================
-// الإحصائيات الحيّة
-// ============================================
-function renderStats() {
-  const counts = countStatuses(currentRecords);
-  statTotal.textContent   = currentRecords.length;
-  statPresent.textContent = counts.present;
-  statAbsent.textContent  = counts.absent;
-  statLate.textContent    = counts.late;
-}
-
-function countStatuses(records) {
-  return {
-    present: records.filter((r) => r.status === STATUS.PRESENT).length,
-    absent:  records.filter((r) => r.status === STATUS.ABSENT).length,
-    late:    records.filter((r) => r.status === STATUS.LATE).length
-  };
-}
-
-// ============================================
-// حفظ الحضور
-// ============================================
-saveBtn.addEventListener("click", async () => {
-  const groupId = groupSelect.value;
-  const gradeId = gradeSelect.value;
-  const date = dateInput.value;
-
-  if (!groupId || !date || !currentRecords.length) return;
-
-  saveBtn.disabled = true;
-  saveBtn.textContent = "بنحفظ...";
-  clearSaveMessage();
-
-  try {
-    const group = teacherGroups.find((g) => g.id === groupId);
-    const grade = teacherGrades.find((g) => g.id === gradeId);
-    const counts = countStatuses(currentRecords);
-
-    // معرّف ثابت = المجموعة + التاريخ → يمنع تكرار نفس اليوم
-    const sessionId = `${groupId}_${date}`;
-
-    const sessionData = {
-      teacherId: currentTeacherId,
-      groupId,
-      groupName: group?.groupName || "",
-      gradeId,
-      gradeName: grade?.gradeName || "",
-      date,
-      records: currentRecords,
-      totalStudents: currentRecords.length,
-      presentCount: counts.present,
-      absentCount: counts.absent,
-      lateCount: counts.late,
-      updatedAt: serverTimestamp()
-    };
-
-    // بنضيف createdAt بس أول مرة عشان ما نمسحش تاريخ الإنشاء الأصلي
-    if (!isExistingSession) {
-      sessionData.createdAt = serverTimestamp();
+    if (student.role !== "student") {
+      showToast("الكود ده مش لطالب.", "error");
+      return;
     }
 
-    await setDoc(doc(db, "attendanceSessions", sessionId), sessionData, { merge: true });
+    // ---- 2. هل هو في المجموعة دي؟ ----
+    const inThisGroup = (selectedGroup.studentIds || []).includes(student.uid);
+    let otherGroupNames = [];
 
-    isExistingSession = true;
-    savedHint.textContent = "التاريخ ده متسجّل — أي حفظ هيعدّل عليه";
-    showSaveMessage("تم حفظ الحضور بنجاح ✓", "success");
+    if (!inThisGroup) {
+      // ندوّر على مجموعاته الحقيقية عند المدرس ده
+      otherGroupNames = allGroups
+        .filter((g) => (g.studentIds || []).includes(student.uid))
+        .map((g) => g.groupName || "بدون اسم");
 
-    // نحدّث السجل المعروض تحت من غير ما نرجع للسيرفر
-    updateLocalSessions(sessionId, sessionData, counts);
-    renderHistory();
+      const groupsText = otherGroupNames.length
+        ? `مجموعته: ${otherGroupNames.join("، ")}`
+        : "مش مسجّل في أي مجموعة عندك.";
+
+      const confirmed = await showConfirm({
+        title: "الطالب ده مش من المجموعة دي",
+        message:
+          `${student.fullName || "الطالب"} (${code}) مش في "${selectedGroup.groupName}". ` +
+          `${groupsText}\n\nتسجّله حضور هنا برضه؟`,
+        confirmLabel: "أيوة، سجّله",
+        cancelLabel: "إلغاء"
+      });
+
+      if (!confirmed) return;
+    }
+
+    // ---- 3. هل هو مسجّل قبل كده النهاردة؟ ----
+    const existing = recordsMap.get(student.uid);
+    const newStatus = manualStatusSelect.value;
+
+    if (existing) {
+      if (existing.status === newStatus) {
+        showToast(`${student.fullName} مسجّل بالفعل.`, "error");
+        return;
+      }
+
+      const confirmed = await showConfirm({
+        title: "تعديل الحالة",
+        message:
+          `${student.fullName} مسجّل حاليًا "${statusLabel(existing.status)}". ` +
+          `تغيّرها لـ "${statusLabel(newStatus)}"؟`,
+        confirmLabel: "غيّرها",
+        cancelLabel: "إلغاء"
+      });
+
+      if (!confirmed) return;
+    }
+
+    // ---- 4. نكتب السجل ----
+    await saveRecord({
+      student,
+      status: newStatus,
+      method: "manual",
+      fromOtherGroup: !inThisGroup,
+      otherGroupNames
+    });
+
+    showToast(
+      `تم تسجيل ${student.fullName} — ${statusLabel(newStatus)}.`,
+      "success"
+    );
+
+    manualCodeInput.value = "";
+    manualCodeInput.focus();
+    renderList();
 
   } catch (error) {
-    console.error("[attendance] فشل حفظ الحضور:", error.code, error.message);
-    showSaveMessage("تعذر الحفظ، حاول تاني", "error");
+    console.error("Manual register error:", error);
+    showToast("تعذر تسجيل الحضور.", "error");
   } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = "حفظ الحضور";
+    setButtonLoading(manualSubmitBtn, false);
   }
-});
-
-// تحديث نسخة السجل المحلية بعد الحفظ
-function updateLocalSessions(sessionId, sessionData, counts) {
-  const localCopy = {
-    id: sessionId,
-    ...sessionData,
-    presentCount: counts.present,
-    absentCount: counts.absent,
-    lateCount: counts.late
-  };
-
-  const index = groupSessions.findIndex((s) => s.id === sessionId);
-  if (index >= 0) {
-    groupSessions[index] = localCopy;
-  } else {
-    groupSessions.push(localCopy);
-  }
-
-  groupSessions.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
 // ============================================
-// سجل الجلسات السابقة
+// كتابة سجل حضور (بيستخدمها التسجيل اليدوي وأزرار الصفوف)
 // ============================================
-function renderHistory() {
-  if (!groupSessions.length) {
-    historyListEl.innerHTML = "";
-    historyEmptyEl.classList.remove("hidden");
+async function saveRecord({ student, status, method, fromOtherGroup, otherGroupNames }) {
+  const recordId = `${selectedGroup.id}_${selectedDate}_${student.uid}`;
+
+  const record = {
+    teacherId:      currentTeacherId,
+    gradeId:        selectedGroup.gradeId,
+    groupId:        selectedGroup.id,
+    groupName:      selectedGroup.groupName || "",
+    date:           selectedDate,
+    studentUid:     student.uid,
+    studentName:    student.fullName || "",
+    studentCode:    student.studentId || "",
+    status,
+    method,
+    fromOtherGroup: !!fromOtherGroup,
+    otherGroupNames: otherGroupNames || [],
+    recordedAt:     serverTimestamp()
+  };
+
+  await setDoc(doc(db, "attendance", recordId), record);
+
+  // نحدّث النسخة المحلية عشان الواجهة تتحدّث فورًا من غير إعادة تحميل
+  recordsMap.set(student.uid, { id: recordId, ...record });
+}
+
+// ============================================
+// عرض قائمة الطلبة
+// ============================================
+function renderList() {
+  const searchTerm = (searchInput.value || "").trim().toLowerCase();
+  const filterValue = filterSelect.value;
+
+  // ---- نبني الصفوف: طلبة المجموعة + أي طالب غريب اتسجّل ----
+  const rows = [];
+
+  groupStudents.forEach((student) => {
+    const record = recordsMap.get(student.uid);
+    rows.push({
+      uid:      student.uid,
+      name:     student.fullName || "بدون اسم",
+      code:     student.studentId || "—",
+      status:   record ? record.status : "absent",
+      method:   record ? record.method : null,
+      foreign:  false,
+      otherGroups: []
+    });
+  });
+
+  // الطلبة اللي اتسجّلوا وهم مش في المجموعة
+  const groupUids = new Set(groupStudents.map((s) => s.uid));
+  recordsMap.forEach((record) => {
+    if (groupUids.has(record.studentUid)) return;
+
+    rows.push({
+      uid:      record.studentUid,
+      name:     record.studentName || "بدون اسم",
+      code:     record.studentCode || "—",
+      status:   record.status,
+      method:   record.method,
+      foreign:  true,
+      otherGroups: record.otherGroupNames || []
+    });
+  });
+
+  // ---- الإحصائيات (قبل الفلترة) ----
+  updateStats(rows);
+
+  // ---- الفلترة والبحث ----
+  const visible = rows.filter((row) => {
+    if (filterValue !== "all" && row.status !== filterValue) return false;
+
+    if (searchTerm) {
+      const haystack = `${row.name} ${row.code}`.toLowerCase();
+      if (!haystack.includes(searchTerm)) return false;
+    }
+
+    return true;
+  });
+
+  // ---- العرض ----
+  if (rows.length === 0) {
+    studentsListEl.innerHTML = "";
+    listEmptyEl.classList.remove("hidden");
+    listEmptyEl.querySelector("h3").textContent = "المجموعة دي فاضية";
+    listEmptyEl.querySelector("p").textContent =
+      "مفيش طلبة في المجموعة دي لسه.";
     return;
   }
 
-  historyEmptyEl.classList.add("hidden");
+  if (visible.length === 0) {
+    studentsListEl.innerHTML = "";
+    listEmptyEl.classList.remove("hidden");
+    listEmptyEl.querySelector("h3").textContent = "مفيش طلبة مطابقين";
+    listEmptyEl.querySelector("p").textContent =
+      "جرّب تغيّر كلمة البحث أو الفلتر.";
+    return;
+  }
 
-  historyListEl.innerHTML = groupSessions.map((session) => {
-    const isCurrent = session.date === dateInput.value;
+  listEmptyEl.classList.add("hidden");
+
+  studentsListEl.innerHTML = visible.map((row) => {
+    const foreignNote = row.foreign
+      ? `<span class="att-foreign-note">⚠ مش من المجموعة دي${
+          row.otherGroups.length ? ` — مجموعته: ${escapeHtml(row.otherGroups.join("، "))}` : ""
+        }</span>`
+      : "";
+
+    const methodBadge = row.method === "qr"
+      ? `<span class="att-method-badge">QR</span>`
+      : "";
+
     return `
-      <div class="gd-row att-history-row ${isCurrent ? "current" : ""}">
+      <div class="gd-row ${row.foreign ? "att-row-foreign" : ""}">
         <div class="gd-row-info">
-          <div class="gd-row-name">${formatDateArabic(session.date)}</div>
-          <div class="gd-row-code">${session.totalStudents || 0} طالب</div>
+          <span class="gd-row-name">${escapeHtml(row.name)}</span>
+          <span class="gd-row-code">${escapeHtml(row.code)}</span>
+          ${foreignNote}
         </div>
-        <div class="att-history-counts">
-          <span class="att-count present">${session.presentCount || 0} حاضر</span>
-          <span class="att-count late">${session.lateCount || 0} متأخر</span>
-          <span class="att-count absent">${session.absentCount || 0} غايب</span>
+
+        <div class="att-row-status">
+          <span class="att-status-badge ${row.status}">
+            ${statusLabel(row.status)}
+          </span>${methodBadge}
         </div>
-        <div class="att-history-actions">
-          <button type="button" class="gd-btn gd-btn-primary att-open-btn"
-                  data-date="${session.date}">فتح</button>
-          <button type="button" class="gd-btn gd-btn-reject att-delete-btn"
-                  data-session-id="${session.id}" data-date="${session.date}">مسح</button>
+
+        <div class="gd-row-actions">
+          <button class="gd-btn" data-action="present" data-uid="${row.uid}"
+            ${row.status === "present" ? "disabled" : ""}>حاضر</button>
+          <button class="gd-btn" data-action="late" data-uid="${row.uid}"
+            ${row.status === "late" ? "disabled" : ""}>متأخر</button>
+          <button class="gd-btn" data-action="remove" data-uid="${row.uid}"
+            ${row.status === "absent" ? "disabled" : ""}>شيل</button>
         </div>
       </div>
     `;
   }).join("");
 }
 
-// ------- فتح أو مسح جلسة من السجل -------
-historyListEl.addEventListener("click", async (e) => {
-  const openBtn = e.target.closest(".att-open-btn");
-  if (openBtn) {
-    dateInput.value = openBtn.dataset.date;
-    await loadAttendanceSheet();
-    dateInput.scrollIntoView({ behavior: "smooth", block: "center" });
-    return;
-  }
+// ============================================
+// الإحصائيات
+// ============================================
+function updateStats(rows) {
+  // إجمالي طلبة المجموعة (من غير الغرباء)
+  const total = groupStudents.length;
 
-  const deleteBtn = e.target.closest(".att-delete-btn");
-  if (deleteBtn) {
-    const { sessionId, date } = deleteBtn.dataset;
+  let present = 0;
+  let late = 0;
 
-    if (!confirm(`متأكد إنك عايز تمسح حضور يوم ${formatDateArabic(date)}؟\nمش هتقدر ترجّعه تاني.`)) {
-      return;
+  rows.forEach((row) => {
+    if (row.status === "present") present++;
+    if (row.status === "late") late++;
+  });
+
+  // الغياب = طلبة المجموعة اللي مالهمش سجل
+  const absent = groupStudents.filter((s) => !recordsMap.has(s.uid)).length;
+
+  statTotal.textContent   = total;
+  statPresent.textContent = present;
+  statLate.textContent    = late;
+  statAbsent.textContent  = absent;
+}
+
+// ============================================
+// أزرار الصفوف (حاضر / متأخر / شيل)
+// ============================================
+// بنستخدم Event Delegation: مستمع واحد على القايمة كلها بدل
+// مستمع لكل زرار — أسرع وبيشتغل مع الصفوف الجديدة تلقائيًا
+studentsListEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+
+  const action = btn.dataset.action;
+  const uid = btn.dataset.uid;
+
+  btn.disabled = true;
+
+  try {
+    if (action === "remove") {
+      await removeRecord(uid);
+    } else {
+      await changeStatus(uid, action);
     }
-
-    deleteBtn.disabled = true;
-
-    try {
-      await deleteDoc(doc(db, "attendanceSessions", sessionId));
-      groupSessions = groupSessions.filter((s) => s.id !== sessionId);
-      renderHistory();
-
-      // لو مسحنا اليوم المفتوح حاليًا، نرجّع الكشف لحالة "جديد"
-      if (date === dateInput.value) {
-        isExistingSession = false;
-        savedHint.textContent = "";
-        setAllStatuses(STATUS.PRESENT);
-      }
-    } catch (error) {
-      console.error("[attendance] فشل مسح الجلسة:", error.code, error.message);
-      alert("تعذر المسح، حاول تاني");
-      deleteBtn.disabled = false;
-    }
+    renderList();
+  } catch (error) {
+    console.error("Row action error:", error);
+    showToast("تعذر تنفيذ العملية.", "error");
+    btn.disabled = false;
   }
 });
 
-// ------- البحث -------
-searchInput.addEventListener("input", renderStudents);
+// تغيير حالة طالب
+async function changeStatus(uid, status) {
+  const existing = recordsMap.get(uid);
+
+  // لو عنده سجل بالفعل، نحدّث الحالة بس
+  if (existing) {
+    await updateDoc(doc(db, "attendance", existing.id), {
+      status,
+      method: "manual",     // أي تعديل من المدرس بيبقى يدوي
+      recordedAt: serverTimestamp()
+    });
+
+    existing.status = status;
+    existing.method = "manual";
+    recordsMap.set(uid, existing);
+
+    showToast(`اتغيّرت لـ "${statusLabel(status)}".`, "success");
+    return;
+  }
+
+  // مالوش سجل → طالب غايب بنسجّله دلوقتي
+  const student = groupStudents.find((s) => s.uid === uid);
+  if (!student) {
+    showToast("مش لاقي بيانات الطالب.", "error");
+    return;
+  }
+
+  await saveRecord({
+    student,
+    status,
+    method: "manual",
+    fromOtherGroup: false,
+    otherGroupNames: []
+  });
+
+  showToast(`تم تسجيل ${student.fullName} — ${statusLabel(status)}.`, "success");
+}
+
+// شيل سجل الحضور (يرجع غايب)
+async function removeRecord(uid) {
+  const existing = recordsMap.get(uid);
+  if (!existing) return;
+
+  const confirmed = await showConfirm({
+    title: "شيل التسجيل",
+    message: `تشيل تسجيل حضور ${existing.studentName}؟ هيرجع "غايب".`,
+    confirmLabel: "شيله",
+    cancelLabel: "إلغاء",
+    danger: true
+  });
+
+  if (!confirmed) {
+    renderList();  // نرجّع الزرار لحالته
+    return;
+  }
+
+  await deleteDoc(doc(db, "attendance", existing.id));
+  recordsMap.delete(uid);
+
+  showToast("تم شيل التسجيل.", "success");
+}
+
+// ============================================
+// البحث والفلترة
+// ============================================
+searchInput.addEventListener("input", renderList);
+filterSelect.addEventListener("change", renderList);
+
+// ============================================
+// رابط كشف الغياب (بنمرر المجموعة والتاريخ)
+// ============================================
+function updateReportLink() {
+  const params = new URLSearchParams();
+  if (selectedGroup) {
+    params.set("gradeId", selectedGroup.gradeId);
+    params.set("groupId", selectedGroup.id);
+  }
+  params.set("date", selectedDate);
+
+  printReportLink.href = `print-attendance.html?${params.toString()}`;
+}
 
 // ============================================
 // دوال مساعدة
 // ============================================
 
-// تاريخ النهارده بصيغة YYYY-MM-DD (بالتوقيت المحلي مش UTC)
-function todayString() {
+// تصفير العرض لما مفيش مجموعة مختارة
+function resetGroupView() {
+  selectedGroup = null;
+  groupStudents = [];
+  recordsMap = new Map();
+
+  sessionCard.classList.add("hidden");
+  manualCard.classList.add("hidden");
+  statsWrapper.classList.add("hidden");
+  listWrapper.classList.add("hidden");
+  pickPrompt.classList.remove("hidden");
+
+  studentsListEl.innerHTML = "";
+  updateReportLink();
+}
+
+// تاريخ النهاردة بصيغة YYYY-MM-DD بالتوقيت المحلي
+// (مش بنستخدم toISOString مباشرة لأنها بتحوّل لـ UTC وممكن ترجّع يوم غلط)
+function todayStr() {
   const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
-  return new Date(now.getTime() - offsetMs).toISOString().split("T")[0];
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
-// عرض التاريخ بشكل مقروء بالعربي
-function formatDateArabic(dateString) {
-  if (!dateString) return "—";
-  const date = new Date(dateString + "T00:00:00");
-  return date.toLocaleDateString("ar-EG", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
+// اسم الحالة بالعربي
+function statusLabel(status) {
+  if (status === "present") return "حاضر";
+  if (status === "late") return "متأخر";
+  return "غايب";
 }
 
-// إفراغ الكشف لما مفيش اختيار
-function resetSheet() {
-  sheetEl.classList.add("hidden");
-  sheetEmptyEl.classList.remove("hidden");
-  sheetEmptyEl.innerHTML = `
-    <div class="empty-icon">📋</div>
-    <h3>اختار مجموعة وتاريخ</h3>
-    <p>هيظهرلك كشف بكل طلاب المجموعة عشان تسجّل حضورهم.</p>
-  `;
-  currentRecords = [];
-  groupSessions = [];
-  isExistingSession = false;
-  savedHint.textContent = "";
-  clearSaveMessage();
+// حالة التحميل على الزرار
+function setButtonLoading(btn, isLoading) {
+  if (isLoading) {
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = "لحظة...";
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn.dataset.originalText || btn.textContent;
+    btn.disabled = false;
+  }
 }
 
-function showSaveMessage(text, type) {
-  saveMessage.textContent = text;
-  saveMessage.className = `message ${type}`;
-}
-
-function clearSaveMessage() {
-  saveMessage.textContent = "";
-  saveMessage.className = "message";
-}
-
-function showContent() {
-  loadingEl.classList.add("hidden");
-  errorEl.classList.add("hidden");
-  contentEl.classList.remove("hidden");
-}
-
+// عرض حالة خطأ عامة
 function showError(message) {
   loadingEl.classList.add("hidden");
   contentEl.classList.add("hidden");
-  errorTextEl.textContent = message;
   errorEl.classList.remove("hidden");
+  errorTextEl.textContent = message;
 }
 
-// حماية من XSS
+// منع XSS: أي نص جاي من قاعدة البيانات لازم يعدي من هنا قبل innerHTML
 function escapeHtml(text) {
+  if (text === null || text === undefined) return "";
   const div = document.createElement("div");
-  div.textContent = text ?? "";
+  div.textContent = String(text);
   return div.innerHTML;
 }
+
+// نحدّث رابط التقرير مع أي تغيير
+gradeSelect.addEventListener("change", updateReportLink);
+groupSelect.addEventListener("change", updateReportLink);
+dateInput.addEventListener("change", updateReportLink);

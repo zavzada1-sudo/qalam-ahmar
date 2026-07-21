@@ -3,118 +3,204 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الحضور - قلم أحمر</title>
+  <title>تسجيل الحضور - قلم أحمر</title>
   <meta name="theme-color" content="#c0392b" />
   <link rel="manifest" href="../manifest.json" />
-  <script>
-  if (localStorage.getItem('qalam_theme') === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-    </script>
->
 
+  <!-- منع ومضة الوضع الفاتح قبل تحميل الثيم -->
+  <script>
+    if (localStorage.getItem('qalam_theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  </script>
+
+  <!-- مكتبة توليد QR (سكربت عادي مش module، لازم يتحمّل قبل منطق الصفحة) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- نظام التصميم الموحّد -->
   <link rel="stylesheet" href="../assets/css/main.css" />
   <link rel="stylesheet" href="../assets/css/rtl.css" />
 </head>
 <body>
 
-  <div class="att-page">
+  <div class="attendance-page">
 
     <!-- ===== مسار التنقل ===== -->
-    <div class="breadcrumb">
+    <div class="breadcrumb no-print">
       <a href="teacher-dashboard.html" class="breadcrumb-item">لوحة التحكم</a>
       <span class="breadcrumb-separator">›</span>
       <span class="breadcrumb-item active">الحضور</span>
     </div>
 
     <!-- ===== حالة التحميل ===== -->
-    <div id="loadingState" class="exam-loading">
+    <div id="loadingState" class="exam-loading no-print">
       <div class="loading-spinner"></div>
-      <p>بنحمّل الفصول...</p>
+      <p>بنحمّل بيانات الحضور...</p>
     </div>
 
     <!-- ===== حالة الخطأ ===== -->
-    <div id="errorState" class="exam-error hidden">
+    <div id="errorState" class="exam-error hidden no-print">
       <div class="error-icon">⚠️</div>
       <h3 id="errorText"></h3>
-      <a href="classes.html" class="btn btn-primary">روح لصفحة الفصول</a>
+      <a href="teacher-dashboard.html" class="btn btn-primary">رجوع للوحة التحكم</a>
     </div>
 
     <!-- ===== المحتوى ===== -->
     <div id="contentWrapper" class="hidden">
 
-      <div class="att-header">
-        <h1>تسجيل الحضور</h1>
-        <p>اختار المجموعة والتاريخ، وعلّم على الغايبين بس — الباقي حاضر تلقائيًا.</p>
+      <!-- رأس الصفحة -->
+      <div class="att-header no-print">
+        <div>
+          <h1>تسجيل الحضور</h1>
+          <p>افتح الحضور للمجموعة، والطلبة يسجّلوا بالـ QR — أو سجّلهم يدويًا بالكود.</p>
+        </div>
+        <a id="printReportLink" class="btn btn-outline" href="print-attendance.html">
+          🖨 كشف الغياب
+        </a>
       </div>
 
-      <!-- ===== اختيار المجموعة والتاريخ ===== -->
-      <div class="card att-selectors">
-        <div class="form-row">
+      <!-- ===== 1) اختيار المجموعة والتاريخ ===== -->
+      <div class="att-card no-print">
+        <div class="att-card-title">المجموعة والتاريخ</div>
+
+        <div class="att-selectors">
           <div class="form-group">
             <label for="gradeSelect">السنة الدراسية</label>
-            <select id="gradeSelect">
-              <option value="">اختار السنة الدراسية</option>
+            <select id="gradeSelect" class="att-select">
+              <option value="">اختر السنة...</option>
             </select>
           </div>
 
           <div class="form-group">
             <label for="groupSelect">المجموعة</label>
-            <select id="groupSelect" disabled>
-              <option value="">اختار المجموعة</option>
+            <select id="groupSelect" class="att-select" disabled>
+              <option value="">اختر المجموعة...</option>
             </select>
           </div>
 
           <div class="form-group">
             <label for="dateInput">التاريخ</label>
-            <input type="date" id="dateInput" />
+            <input type="date" id="dateInput" class="att-select" />
+          </div>
+        </div>
+
+        <p id="dateHint" class="att-hint hidden">
+          ⓘ إنت بتشوف تاريخ قديم. تقدر تعدّل الحضور يدويًا، بس مش هتقدر تفتح الـ QR
+          غير في يوم النهاردة.
+        </p>
+      </div>
+
+      <!-- ===== 2) حالة الحضور (مفتوح / مقفول) ===== -->
+      <div id="sessionCard" class="att-card att-session-card hidden no-print">
+        <div class="att-session-info">
+          <span id="sessionBadge" class="att-badge closed">مقفول</span>
+          <div>
+            <strong id="sessionTitle">الحضور مقفول</strong>
+            <p id="sessionSubtitle">افتح الحضور عشان الطلبة يقدروا يسجّلوا بالـ QR.</p>
+          </div>
+        </div>
+
+        <button id="toggleSessionBtn" class="btn btn-primary" type="button">
+          افتح الحضور دلوقتي
+        </button>
+      </div>
+
+      <!-- ===== 3) كارت الـ QR (ده اللي بيتطبع لوحده) ===== -->
+      <div id="qrCard" class="att-card">
+        <div class="att-card-title no-print">
+          كود الحضور (QR)
+          <span class="att-card-title-note">اطبعه مرة واحدة وعلّقه — بيفضل شغال دايمًا</span>
+        </div>
+
+        <!-- المنطقة اللي بتتطبع -->
+        <div id="qrPrintArea" class="att-qr-print-area">
+          <h2 class="att-qr-print-title">تسجيل الحضور</h2>
+          <p id="qrTeacherName" class="att-qr-teacher"></p>
+
+          <div id="qrCodeBox" class="qr-code-box att-qr-box"></div>
+
+          <p class="att-qr-steps">
+            افتح كاميرا الموبايل وصوّر الكود ← سجّل دخولك ← الحضور يتسجّل تلقائي
+          </p>
+          <p class="att-qr-warning">
+            لازم تكون مسجّل دخول بحسابك، والحضور يكون مفتوح من المدرس.
+          </p>
+        </div>
+
+        <div class="att-qr-actions no-print">
+          <button id="printQrBtn" class="btn btn-primary" type="button">🖨 اطبع الكود</button>
+          <button id="renewTokenBtn" class="btn btn-outline" type="button">🔄 جدّد الكود</button>
+        </div>
+
+        <p class="att-hint no-print">
+          ⓘ "جدّد الكود" بيلغي أي كود مطبوع قديم فورًا — استخدمه بس لو الكود اتسرّب.
+        </p>
+      </div>
+
+      <!-- ===== 4) التسجيل اليدوي بالكود ===== -->
+      <div id="manualCard" class="att-card hidden no-print">
+        <div class="att-card-title">تسجيل يدوي بكود الطالب</div>
+
+        <div class="att-manual-row">
+          <input
+            type="text"
+            id="manualCodeInput"
+            class="att-manual-input"
+            placeholder="كود الطالب (مثال: TK492)"
+            autocomplete="off"
+            maxlength="10"
+            inputmode="text"
+          />
+
+          <select id="manualStatusSelect" class="att-select att-manual-status">
+            <option value="present">حاضر</option>
+            <option value="late">متأخر</option>
+          </select>
+
+          <button id="manualSubmitBtn" class="btn btn-primary" type="button">سجّل</button>
+        </div>
+
+        <p class="att-hint">
+          ⓘ الكود مش بيفرق بين حروف كبيرة وصغيرة. "متأخر" متاحة من هنا بس — الـ QR
+          دايمًا بيسجّل "حاضر".
+        </p>
+      </div>
+
+      <!-- ===== 5) الإحصائيات ===== -->
+      <div id="statsWrapper" class="stats-grid hidden no-print">
+        <div class="stat-card blue">
+          <div class="stat-icon">👥</div>
+          <div class="stat-info">
+            <strong id="statTotal">0</strong>
+            <p>طلبة المجموعة</p>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">✅</div>
+          <div class="stat-info">
+            <strong id="statPresent">0</strong>
+            <p>حاضر</p>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">⏰</div>
+          <div class="stat-info">
+            <strong id="statLate">0</strong>
+            <p>متأخر</p>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">❌</div>
+          <div class="stat-info">
+            <strong id="statAbsent">0</strong>
+            <p>غايب</p>
           </div>
         </div>
       </div>
 
-      <!-- ===== حالة فارغة قبل الاختيار ===== -->
-      <div id="sheetEmpty" class="empty-state">
-        <div class="empty-icon">📋</div>
-        <h3>اختار مجموعة وتاريخ</h3>
-        <p>هيظهرلك كشف بكل طلاب المجموعة عشان تسجّل حضورهم.</p>
-      </div>
+      <!-- ===== 6) قائمة الطلبة ===== -->
+      <div id="listWrapper" class="hidden no-print">
 
-      <!-- ===== كشف الحضور ===== -->
-      <div id="attendanceSheet" class="hidden">
-
-        <!-- إحصائيات حيّة -->
-        <div class="stats-grid att-stats">
-          <div class="stat-card blue">
-            <div class="stat-icon">👥</div>
-            <div class="stat-info">
-              <strong id="statTotal">0</strong>
-              <p>إجمالي الطلاب</p>
-            </div>
-          </div>
-          <div class="stat-card green">
-            <div class="stat-icon">✅</div>
-            <div class="stat-info">
-              <strong id="statPresent">0</strong>
-              <p>حاضر</p>
-            </div>
-          </div>
-          <div class="stat-card orange">
-            <div class="stat-icon">⏰</div>
-            <div class="stat-info">
-              <strong id="statLate">0</strong>
-              <p>متأخر</p>
-            </div>
-          </div>
-          <div class="stat-card red">
-            <div class="stat-icon">❌</div>
-            <div class="stat-info">
-              <strong id="statAbsent">0</strong>
-              <p>غايب</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- شريط الأدوات -->
         <div class="att-toolbar">
           <input
             type="search"
@@ -123,60 +209,229 @@
             placeholder="ابحث باسم الطالب أو كوده..."
             autocomplete="off"
           />
-          <button type="button" id="markAllPresent" class="gd-btn gd-btn-accept">
-            الكل حاضر
-          </button>
-          <button type="button" id="markAllAbsent" class="gd-btn gd-btn-reject">
-            الكل غايب
-          </button>
+          <select id="filterSelect" class="att-select">
+            <option value="all">الكل</option>
+            <option value="present">الحاضرين</option>
+            <option value="late">المتأخرين</option>
+            <option value="absent">الغايبين</option>
+          </select>
         </div>
 
-        <!-- قائمة الطلاب -->
         <div id="studentsList" class="gd-list"></div>
 
-        <!-- شريط الحفظ -->
-        <div class="att-save-bar">
-          <div class="att-save-info">
-            <button type="button" id="saveBtn" class="btn btn-primary">حفظ الحضور</button>
-            <span id="savedHint" class="att-saved-hint"></span>
-          </div>
-          <p id="saveMessage" class="message"></p>
+        <div id="listEmpty" class="empty-state hidden">
+          <div class="empty-icon">🔍</div>
+          <h3>مفيش طلبة مطابقين</h3>
+          <p>جرّب تغيّر كلمة البحث أو الفلتر.</p>
         </div>
-
-        <!-- سجل الأيام السابقة -->
-        <div class="att-history">
-          <h2>سجل الحضور السابق</h2>
-
-          <div id="historyList" class="gd-list"></div>
-
-          <div id="historyEmpty" class="gd-empty hidden">
-            لسه مفيش أيام حضور متسجلة للمجموعة دي.
-          </div>
-        </div>
-
       </div>
+
+      <!-- ===== 7) حالة "لسه ما اخترتش مجموعة" ===== -->
+      <div id="pickPrompt" class="empty-state no-print">
+        <div class="empty-icon">📋</div>
+        <h3>اختر السنة والمجموعة</h3>
+        <p>اختر المجموعة اللي عايز تسجّل حضورها من فوق.</p>
+      </div>
+
     </div>
   </div>
 
   <!-- ===== تنسيقات خاصة بالصفحة دي بس ===== -->
   <style>
-    .att-page {
-      max-width: 900px;
+    .attendance-page {
+      max-width: 1000px;
       margin: 0 auto;
       padding: 24px 20px 60px;
     }
 
-    .att-header { margin-bottom: 20px; }
-    .att-header h1 { font-size: 22px; color: var(--primary); margin-bottom: 4px; }
-    .att-header p { font-size: 14px; color: var(--text-muted); }
+    /* ---------- رأس الصفحة ---------- */
+    .att-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .att-header h1 {
+      font-size: 22px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .att-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 520px;
+    }
 
-    .att-selectors { margin-bottom: 20px; }
-    .att-selectors .form-row { margin-bottom: 0; }
+    /* ---------- الكروت ---------- */
+    .att-card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .att-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .att-card-title-note {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-light);
+    }
+
+    /* ---------- المحددات ---------- */
+    .att-selectors {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
     .att-selectors .form-group { margin-bottom: 0; }
 
-    .att-stats { margin-bottom: 18px; }
+    .att-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border, #ddd);
+      border-radius: var(--radius-sm, 8px);
+      font-family: inherit;
+      font-size: .9rem;
+      background: var(--input-bg, #fff);
+      color: var(--text);
+    }
+    .att-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .att-select:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
 
-    /* شريط الأدوات */
+    .att-hint {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+
+    /* ---------- كارت حالة الحضور ---------- */
+    .att-session-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .att-session-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .att-session-info strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+    .att-session-info p {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .att-badge {
+      display: inline-block;
+      padding: 5px 13px;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .att-badge.open   { background: var(--green-light);  color: var(--green); }
+    .att-badge.closed { background: #f0f0f0;             color: #888; }
+
+    /* ---------- كارت الـ QR ---------- */
+    .att-qr-print-area {
+      text-align: center;
+      padding: 10px 0;
+    }
+    .att-qr-print-title {
+      font-size: 20px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .att-qr-teacher {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .att-qr-box {
+      display: inline-block;
+      padding: 12px;
+      background: #fff;
+      border-radius: 10px;
+      line-height: 0;
+    }
+    .att-qr-box img,
+    .att-qr-box canvas { display: block; }
+
+    .att-qr-steps {
+      font-size: 13px;
+      color: var(--text);
+      margin-top: 14px;
+      font-weight: 600;
+    }
+    .att-qr-warning {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 6px;
+    }
+    .att-qr-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    /* ---------- التسجيل اليدوي ---------- */
+    .att-manual-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .att-manual-input {
+      flex: 1;
+      min-width: 180px;
+      padding: 11px 13px;
+      border: 1px solid var(--border, #ddd);
+      border-radius: var(--radius-sm, 8px);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      background: var(--input-bg, #fff);
+      color: var(--text);
+    }
+    .att-manual-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .att-manual-input::placeholder {
+      font-weight: 400;
+      letter-spacing: normal;
+      text-transform: none;
+    }
+    .att-manual-status { width: auto; min-width: 110px; }
+
+    /* ---------- شريط البحث ---------- */
     .att-toolbar {
       display: flex;
       gap: 10px;
@@ -188,112 +443,96 @@
       min-width: 200px;
       margin-bottom: 0;
     }
-    .att-toolbar .gd-btn { padding: 10px 16px; }
+    .att-toolbar .att-select { width: auto; min-width: 130px; }
 
-    /* صف الطالب */
-    .att-row { gap: 12px; }
+    /* ---------- صفوف الطلبة ---------- */
+    .att-row-status { width: 96px; flex-shrink: 0; }
 
-    /* أزرار الحالة (حاضر / متأخر / غايب) */
-    .att-status-group {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .att-status-btn {
-      border: 1.5px solid var(--border);
-      background: #fff;
-      color: var(--text-muted);
-      border-radius: var(--radius-sm);
-      padding: 7px 14px;
-      font-size: .85rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all .15s ease;
-      white-space: nowrap;
-    }
-    .att-status-btn:hover { border-color: var(--text-light); }
-
-    .att-status-btn.present.active {
-      background: var(--green); border-color: var(--green); color: #fff;
-    }
-    .att-status-btn.late.active {
-      background: var(--orange); border-color: var(--orange); color: #fff;
-    }
-    .att-status-btn.absent.active {
-      background: var(--primary); border-color: var(--primary); color: #fff;
-    }
-
-    /* شريط الحفظ */
-    .att-save-bar {
-      background: var(--surface);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px 18px;
-      margin-top: 16px;
-      position: sticky;
-      bottom: 12px;
-      z-index: 5;
-    }
-    .att-save-info {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    .att-saved-hint {
-      font-size: .82rem;
-      color: var(--orange);
-      font-weight: 600;
-    }
-    .att-save-bar .message { margin-top: 6px; }
-
-    /* سجل الأيام السابقة */
-    .att-history { margin-top: 34px; }
-    .att-history h2 {
-      font-size: 18px;
-      margin-bottom: 14px;
-      color: var(--text);
-    }
-
-    .att-history-row.current {
-      border-color: var(--primary);
-      background: var(--primary-lighter);
-    }
-
-    .att-history-counts {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      flex-shrink: 0;
-    }
-    .att-count {
+    .att-status-badge {
+      display: inline-block;
+      padding: 4px 11px;
+      border-radius: 20px;
       font-size: .76rem;
       font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
       white-space: nowrap;
     }
-    .att-count.present { background: var(--green-light);  color: var(--green); }
-    .att-count.late    { background: var(--orange-light); color: var(--orange); }
-    .att-count.absent  { background: var(--primary-light); color: var(--primary); }
+    .att-status-badge.present { background: var(--green-light);  color: var(--green); }
+    .att-status-badge.late    { background: var(--orange-light); color: var(--orange); }
+    .att-status-badge.absent  { background: #f0f0f0;             color: #888; }
 
-    .att-history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    /* شارة "سجّل بالـ QR" */
+    .att-method-badge {
+      display: inline-block;
+      font-size: .68rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: var(--blue-light, #e8f0fe);
+      color: var(--blue, #1a73e8);
+      margin-inline-start: 5px;
+    }
 
-    /* تجاوب الموبايل */
+    /* تنبيه الطالب اللي من مجموعة تانية */
+    .att-foreign-note {
+      display: block;
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--orange);
+      margin-top: 3px;
+    }
+    .att-row-foreign {
+      border-inline-start: 3px solid var(--orange);
+      background: var(--orange-light, #fff5e6);
+    }
+
+    /* ---------- الطباعة: نطبع كارت الـ QR بس ---------- */
+    @media print {
+      .no-print { display: none !important; }
+
+      .attendance-page { padding: 0; max-width: none; }
+
+      .att-card {
+        border: none;
+        padding: 0;
+        margin: 0;
+        background: #fff;
+      }
+
+      /* نخفي كل الكروت ما عدا كارت الـ QR */
+      #sessionCard,
+      #manualCard,
+      #statsWrapper,
+      #listWrapper,
+      #pickPrompt,
+      #loadingState,
+      #errorState { display: none !important; }
+
+      #qrCard {
+        display: block !important;
+        page-break-inside: avoid;
+      }
+
+      .att-qr-print-area { padding: 40px 0; }
+      .att-qr-print-title { font-size: 26px; color: #000; }
+      .att-qr-teacher { font-size: 17px; color: #333; }
+      .att-qr-steps { font-size: 15px; color: #000; }
+      .att-qr-warning { font-size: 13px; color: #444; }
+    }
+
+    /* ---------- تجاوب الموبايل ---------- */
     @media (max-width: 640px) {
-      .att-row { flex-wrap: wrap; }
-      .att-row .gd-row-info { flex-basis: 100%; }
-      .att-status-group { width: 100%; }
-      .att-status-btn { flex: 1; padding: 9px 6px; }
-
-      .att-history-row { flex-wrap: wrap; }
-      .att-history-row .gd-row-info { flex-basis: 100%; }
-      .att-history-actions { margin-inline-start: auto; }
+      .att-session-card { flex-direction: column; align-items: stretch; }
+      .att-session-card .btn { width: 100%; }
+      .att-manual-row { flex-direction: column; }
+      .att-manual-status,
+      .att-manual-row .btn { width: 100%; }
+      .gd-row { flex-wrap: wrap; }
+      .gd-row-info { flex-basis: 100%; }
+      .att-row-status { width: auto; }
     }
   </style>
 
+  <!-- منطق الصفحة (ES Module زي باقي المشروع) -->
   <script type="module" src="../js/teacher/attendance.js"></script>
 </body>
 </html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الحضور - قلم أحمر</title>
+  <meta name="theme-color" content="#c0392b" />
+  <link rel="manifest" href="../manifest.json" />
+
+  <script>
+    if (localStorage.getItem('qalam_theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/rtl.css" />
+</head>
+<body>
+
+  <div class="scan-page">
+
+    <!-- ===== حالة التحميل ===== -->
+    <div id="loadingState" class="scan-box">
+      <div class="loading-spinner"></div>
+      <p class="scan-loading-text">بنسجّل حضورك...</p>
+    </div>
+
+    <!-- ===== نتيجة التسجيل ===== -->
+    <div id="resultState" class="scan-box hidden">
+      <div id="resultIcon" class="scan-icon"></div>
+      <h1 id="resultTitle" class="scan-title"></h1>
+      <p id="resultMessage" class="scan-message"></p>
+
+      <div id="resultDetails" class="scan-details hidden">
+        <div class="scan-detail-row">
+          <span>الاسم</span>
+          <strong id="detailName">—</strong>
+        </div>
+        <div class="scan-detail-row">
+          <span>المجموعة</span>
+          <strong id="detailGroup">—</strong>
+        </div>
+        <div class="scan-detail-row">
+          <span>التاريخ</span>
+          <strong id="detailDate">—</strong>
+        </div>
+      </div>
+
+      <a id="homeLink" href="student-home.html" class="btn btn-primary btn-block">
+        الصفحة الرئيسية
+      </a>
+    </div>
+
+  </div>
+
+  <style>
+    .scan-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px;
+    }
+
+    .scan-box {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 36px 26px;
+      text-align: center;
+    }
+
+    .scan-loading-text {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .scan-icon {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+
+    .scan-title {
+      font-size: 21px;
+      margin-bottom: 8px;
+    }
+    .scan-title.success { color: var(--green); }
+    .scan-title.error   { color: var(--primary); }
+    .scan-title.warn    { color: var(--orange); }
+
+    .scan-message {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    /* تفاصيل التسجيل */
+    .scan-details {
+      background: var(--bg, #f7f7f7);
+      border-radius: var(--radius-sm, 8px);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      text-align: start;
+    }
+    .scan-detail-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 0;
+      font-size: 13.5px;
+    }
+    .scan-detail-row + .scan-detail-row {
+      border-top: 1px solid var(--border, #e8e8e8);
+    }
+    .scan-detail-row span { color: var(--text-light); }
+    .scan-detail-row strong { color: var(--text); }
+  </style>
+
+  <script type="module" src="../js/student/attendance-scan.js"></script>
+</body>
+</html>
