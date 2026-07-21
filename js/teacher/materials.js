@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs }
+import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, onSnapshot }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showConfirm } from "../shared/ui.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
@@ -188,44 +188,56 @@ function syncGradeSelectAll(gradeId) {
 // عرض المواد
 // ============================================
 
-async function loadMaterials() {
+// مرجع للاستماع الحالي، عشان نقدر نوقفه لو احتجنا
+let unsubscribeMaterials = null;
+
+function loadMaterials() {
   materialsList.innerHTML = `<p class="loading-text">جاري التحميل...</p>`;
-  try {
-    const snap = await getDocs(query(
+
+  // لو فيه استماع شغال من قبل، نوقفه الأول (يمنع تكرار الاستماع)
+  if (unsubscribeMaterials) unsubscribeMaterials();
+
+  // onSnapshot بدل getDocs:
+  // بيرجّع البيانات فورًا من الكاش المحلي (لو موجودة من زيارة سابقة)،
+  // وبعدين بيتحدّث لوحده لما البيانات توصل من السيرفر.
+  // كمان لو أضفت أو مسحت مادة، الشاشة بتتحدث تلقائي من غير إعادة تحميل.
+  unsubscribeMaterials = onSnapshot(
+    query(
       collection(db, "materials"),
       where("teacherId", "==", currentTeacherId)
-    ));
+    ),
+    (snap) => {
+      const materials = [];
+      snap.forEach((m) => materials.push({ id: m.id, ...m.data() }));
 
-    const materials = [];
-    snap.forEach((m) => materials.push({ id: m.id, ...m.data() }));
+      // الأحدث أول
+      materials.sort((a, b) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
 
-    // الأحدث أول
-    materials.sort((a, b) =>
-      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-    );
+      materialsCount.textContent = materials.length;
 
-    materialsCount.textContent = materials.length;
+      if (materials.length === 0) {
+        materialsList.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-icon">📚</div>
+            <h3>لسه مفيش مواد</h3>
+            <p>ضيف أول ملزمة أو ملف لطلابك.</p>
+          </div>
+        `;
+        return;
+      }
 
-    if (materials.length === 0) {
-      materialsList.innerHTML = `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-icon">📚</div>
-          <h3>لسه مفيش مواد</h3>
-          <p>ضيف أول ملزمة أو ملف لطلابك.</p>
-        </div>
-      `;
-      return;
+      materialsList.innerHTML = "";
+      materials.forEach((material) => {
+        materialsList.appendChild(buildMaterialCard(material));
+      });
+    },
+    (error) => {
+      console.error("Load materials error:", error);
+      materialsList.innerHTML = `<p class="message error">تعذر تحميل المواد، حدّث الصفحة</p>`;
     }
-
-    materialsList.innerHTML = "";
-    materials.forEach((material) => {
-      materialsList.appendChild(buildMaterialCard(material));
-    });
-
-  } catch (error) {
-    console.error("Load materials error:", error);
-    materialsList.innerHTML = `<p class="message error">تعذر تحميل المواد، حدّث الصفحة</p>`;
-  }
+  );
 }
 
 function buildMaterialCard(material) {
