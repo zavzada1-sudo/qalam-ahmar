@@ -17,16 +17,41 @@ let selectedRole = "teacher"; // القيمة الافتراضية
 const teacherTab = document.getElementById("teacherTab");
 const studentTab = document.getElementById("studentTab");
 
+const parentPhoneField     = document.getElementById("parentPhoneField");
+const parentPhoneCallInput = document.getElementById("parentPhoneCall");
+const parentPhoneWaInput   = document.getElementById("parentPhoneWhatsapp");
+const sameAsCallCheckbox   = document.getElementById("sameAsCallNumber");
+
 teacherTab.addEventListener("click", () => {
   selectedRole = "teacher";
   teacherTab.classList.add("active");
   studentTab.classList.remove("active");
+
+  parentPhoneField.classList.add("hidden");
+  parentPhoneCallInput.required = false;
+  parentPhoneCallInput.value = "";
+  parentPhoneWaInput.value = "";
+  sameAsCallCheckbox.checked = true;
+  parentPhoneWaInput.classList.add("hidden");
 });
 
 studentTab.addEventListener("click", () => {
   selectedRole = "student";
   studentTab.classList.add("active");
   teacherTab.classList.remove("active");
+
+  parentPhoneField.classList.remove("hidden");
+  parentPhoneCallInput.required = true;
+});
+
+// ------- checkbox "نفس رقم المكالمات" -------
+sameAsCallCheckbox.addEventListener("change", () => {
+  const isSame = sameAsCallCheckbox.checked;
+
+  parentPhoneWaInput.classList.toggle("hidden", isSame);
+  parentPhoneWaInput.required = !isSame;
+
+  if (isSame) parentPhoneWaInput.value = "";
 });
 
 // ------- إظهار / إخفاء كلمة المرور (لأي حقل باسورد) -------
@@ -76,6 +101,10 @@ signupForm.addEventListener("submit", async (e) => {
   const fullName = document.getElementById("fullName").value.trim();
   const email = document.getElementById("email").value.trim();
   const phone = document.getElementById("phone").value.trim();
+  const parentPhoneCall = document.getElementById("parentPhoneCall").value.trim();
+  const parentPhoneWhatsapp = sameAsCallCheckbox.checked
+    ? parentPhoneCall
+    : document.getElementById("parentPhoneWhatsapp").value.trim();
   const password = document.getElementById("password").value;
   const confirmPassword = document.getElementById("confirmPassword").value;
 
@@ -101,9 +130,13 @@ signupForm.addEventListener("submit", async (e) => {
 
     // لو الحساب طالب، نحجزله كود فريد (حرفين + 3 أرقام، مثال: TK492)
     // بيتم بعد إنشاء الحساب مباشرةً لأن الحجز محتاج المستخدم يكون مسجل دخول
+    // لو الحساب طالب، نحجزله كود فريد (حرفين + 3 أرقام، مثال: TK492)
+    // بيتم بعد إنشاء الحساب مباشرةً لأن الحجز محتاج المستخدم يكون مسجل دخول
     if (selectedRole === "student") {
       signupBtn.textContent = "جاري تجهيز كود الطالب...";
       userData.studentId = await reserveStudentCode(credential.user.uid);
+      userData.parentPhoneCall = parentPhoneCall;
+      userData.parentPhoneWhatsapp = parentPhoneWhatsapp;
     }
 
     await setDoc(doc(db, "users", credential.user.uid), userData);

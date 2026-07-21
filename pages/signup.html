@@ -49,6 +49,26 @@
           autocomplete="tel"
           required>
 
+          <div id="parentPhoneField" class="hidden">
+          <input
+            type="tel"
+            id="parentPhoneCall"
+            placeholder="رقم ولي الأمر (مكالمات)"
+            autocomplete="tel">
+
+          <label class="checkbox-label">
+            <input type="checkbox" id="sameAsCallNumber" checked>
+            رقم الواتساب نفس رقم المكالمات
+          </label>
+
+          <input
+            type="tel"
+            id="parentPhoneWhatsapp"
+            placeholder="رقم ولي الأمر (واتساب)"
+            autocomplete="tel"
+            class="hidden">
+        </div>
+
         <div class="password-field">
           <input
             type="password"
