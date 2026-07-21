@@ -52,6 +52,35 @@ function translateFirebaseError(code) {
   }
 }
 
+// ------- التوجيه بعد الدخول (مع مراعاة رابط سكان محفوظ) -------
+// لو الطالب كان بيعمل سكان لـ QR الحضور وهو مش مسجّل دخول، صفحة
+// attendance-scan.js بتحفظ رابطها هنا قبل ما تودّيه لصفحة الدخول.
+// لو لقيناه، نمسحه فورًا (عشان ميتكررش استخدامه) ونوديه هناك بدل
+// الصفحة الرئيسية. الفحص ده لازم يبقى للطالب بس، مش المدرس.
+function redirectAfterLogin(role) {
+  if (role === "student") {
+    let redirectUrl = null;
+    try {
+      redirectUrl = localStorage.getItem("qalam_redirect_after_login");
+      if (redirectUrl) localStorage.removeItem("qalam_redirect_after_login");
+    } catch (e) {
+      console.warn("Cannot read redirect:", e);
+    }
+
+    if (redirectUrl) {
+      window.location.href = redirectUrl;
+      return;
+    }
+
+    window.location.href = "pages/student-home.html";
+    return;
+  }
+
+  if (role === "teacher") {
+    window.location.href = "pages/teacher-dashboard.html";
+  }
+}
+
 // ------- تسجيل الدخول -------
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -75,11 +104,7 @@ loginForm.addEventListener("submit", async (e) => {
     }
 
     const role = userDoc.data().role;
-    if (role === "teacher") {
-      window.location.href = "pages/teacher-dashboard.html";
-    } else if (role === "student") {
-      window.location.href = "pages/student-home.html";
-    }
+    redirectAfterLogin(role);
 
   } catch (error) {
     showError(translateFirebaseError(error.code));

@@ -27,7 +27,7 @@
 // ============================================
 
 import { auth, db } from "../../firebase-config.js";
-import { onAuthStateChanged }
+import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
@@ -38,6 +38,34 @@ import { showToast, showConfirm } from "../shared/ui.js";
 import { renderSkeleton } from "../shared/states.js";
 import { isValidCodeFormat } from "../shared/student-code.js";
 import "../shared/theme.js";
+
+// ============================================
+// عناصر القائمة الجانبية (نفس نمط باقي صفحات المدرس)
+// ============================================
+const logoutBtn = document.getElementById("logoutBtn");
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+
+if (menuToggle) menuToggle.addEventListener("click", () => {
+  sidebar.classList.add("open");
+  sidebarBackdrop.classList.add("show");
+});
+if (sidebarBackdrop) sidebarBackdrop.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  sidebarBackdrop.classList.remove("show");
+});
+
+logoutBtn.addEventListener("click", async () => {
+  logoutBtn.disabled = true;
+  try {
+    await signOut(auth);
+    window.location.href = "../index.html";
+  } catch (error) {
+    console.error("Logout error:", error);
+    logoutBtn.disabled = false;
+  }
+});
 
 // ============================================
 // عناصر الصفحة
@@ -154,8 +182,6 @@ onAuthStateChanged(auth, async (user) => {
 // ============================================
 // تحميل السنين والمجموعات بتاعة المدرس
 // ============================================
-// ملاحظة مهمة: لازم where("teacherId", "==", ...) في الاتنين عشان
-// يطابق شرط الـ Security Rules، وإلا Firestore بيرفض الاستعلام كله.
 async function loadGradesAndGroups() {
   const [gradesSnap, groupsSnap] = await Promise.all([
     getDocs(query(collection(db, "grades"), where("teacherId", "==", currentTeacherId))),
@@ -168,7 +194,6 @@ async function loadGradesAndGroups() {
   allGroups = [];
   groupsSnap.forEach((d) => allGroups.push({ id: d.id, ...d.data() }));
 
-  // نملا قائمة السنين
   gradeSelect.innerHTML = `<option value="">اختر السنة...</option>`;
   allGrades.forEach((g) => {
     const opt = document.createElement("option");
@@ -233,7 +258,6 @@ groupSelect.addEventListener("change", async () => {
 dateInput.addEventListener("change", async () => {
   selectedDate = dateInput.value || todayStr();
 
-  // تنبيه لو التاريخ مش النهاردة
   dateHintEl.classList.toggle("hidden", selectedDate === todayStr());
 
   if (selectedGroup) await loadAttendanceView();
@@ -245,20 +269,17 @@ dateInput.addEventListener("change", async () => {
 async function loadAttendanceView() {
   if (!selectedGroup) return;
 
-  // نظهر الأقسام المخفية
   pickPrompt.classList.add("hidden");
   sessionCard.classList.remove("hidden");
   manualCard.classList.remove("hidden");
   statsWrapper.classList.remove("hidden");
   listWrapper.classList.remove("hidden");
 
-  // سكيلتون أثناء التحميل
   renderSkeleton(studentsListEl, { type: "row", count: 5 });
 
   try {
     const studentIds = selectedGroup.studentIds || [];
 
-    // نحمّل بيانات الطلبة وسجلات الحضور مع بعض
     const [students, records] = await Promise.all([
       fetchUsersByIds(studentIds),
       fetchAttendanceRecords(selectedGroup.id, selectedDate)
@@ -282,7 +303,6 @@ async function loadAttendanceView() {
 // ============================================
 // جلب بيانات مستخدمين بالـ IDs
 // ============================================
-// Firestore بيسمح بـ 10 عناصر بس في "in"، فبنقسّمهم مجموعات
 async function fetchUsersByIds(ids) {
   if (!ids || ids.length === 0) return [];
 
@@ -296,7 +316,6 @@ async function fetchUsersByIds(ids) {
     snap.forEach((d) => results.push({ uid: d.id, ...d.data() }));
   }
 
-  // ترتيب أبجدي بالاسم
   results.sort((a, b) =>
     (a.fullName || "").localeCompare(b.fullName || "", "ar")
   );
@@ -310,7 +329,7 @@ async function fetchUsersByIds(ids) {
 async function fetchAttendanceRecords(groupId, date) {
   const snap = await getDocs(query(
     collection(db, "attendance"),
-    where("teacherId", "==", currentTeacherId),  // لازم يطابق الـ Rules
+    where("teacherId", "==", currentTeacherId),
     where("groupId", "==", groupId),
     where("date", "==", date)
   ));
@@ -327,7 +346,6 @@ function renderSessionState() {
   const active = teacherData.activeAttendance;
   const isToday = selectedDate === todayStr();
 
-  // الحضور مفتوح للمجموعة دي النهاردة؟
   const isOpenForThisGroup =
     active &&
     active.groupId === selectedGroup.id &&
@@ -344,7 +362,6 @@ function renderSessionState() {
     toggleSessionBtn.disabled = false;
 
   } else if (active && active.date === todayStr()) {
-    // مفتوح بس لمجموعة تانية
     sessionBadge.textContent = "مقفول";
     sessionBadge.className = "att-badge closed";
     sessionTitle.textContent = "الحضور مفتوح لمجموعة تانية";
@@ -363,7 +380,7 @@ function renderSessionState() {
       : "مش هتقدر تفتح الحضور في تاريخ قديم — سجّل يدويًا بس.";
     toggleSessionBtn.textContent = "افتح الحضور دلوقتي";
     toggleSessionBtn.className = "btn btn-primary";
-    toggleSessionBtn.disabled = !isToday;  // فتح الحضور للنهاردة بس
+    toggleSessionBtn.disabled = !isToday;
   }
 }
 
@@ -383,20 +400,16 @@ toggleSessionBtn.addEventListener("click", async () => {
 
   try {
     if (isOpenForThisGroup) {
-      // ---- قفل ----
       await closeActiveSession();
       showToast("تم قفل الحضور.", "success");
 
     } else {
-      // ---- فتح ----
-      // لو فيه حضور مفتوح لمجموعة تانية، نقفله الأول
       if (active && active.date === today) {
         await closeActiveSession();
       }
 
       const sessionId = `${selectedGroup.id}_${today}`;
 
-      // نسجّل إن فيه حصة النهاردة (بيفرّق بين "مفيش حصة" و"الكل غاب")
       await setDoc(doc(db, "attendanceSessions", sessionId), {
         teacherId: currentTeacherId,
         gradeId:   selectedGroup.gradeId,
@@ -442,7 +455,6 @@ async function closeActiveSession() {
 
   const sessionId = `${active.groupId}_${active.date}`;
 
-  // نحدّث وقت القفل في الجلسة (لو المستند اتمسح لأي سبب منوقعش الصفحة)
   try {
     await updateDoc(doc(db, "attendanceSessions", sessionId), {
       closedAt: serverTimestamp()
@@ -462,7 +474,7 @@ async function closeActiveSession() {
 // توليد وعرض الـ QR
 // ============================================
 function renderQrCode() {
-  qrCodeBox.innerHTML = "";  // نفضّيه الأول عشان التجديد
+  qrCodeBox.innerHTML = "";
 
   const scanUrl =
     `${window.location.origin}/pages/attendance-scan.html` +
@@ -477,7 +489,6 @@ function renderQrCode() {
   });
 }
 
-// توليد توكن عشوائي (نستخدم crypto لو متاح)
 function generateToken() {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let token = "";
@@ -547,7 +558,6 @@ renewTokenBtn.addEventListener("click", async () => {
 // ============================================
 manualSubmitBtn.addEventListener("click", registerManually);
 
-// الضغط على Enter في خانة الكود = تسجيل
 manualCodeInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -561,7 +571,6 @@ async function registerManually() {
     return;
   }
 
-  // بحث غير حساس لحالة الأحرف: بنحوّل لكابيتال دايمًا
   const code = manualCodeInput.value.trim().toUpperCase();
 
   if (!code) {
@@ -579,7 +588,6 @@ async function registerManually() {
   setButtonLoading(manualSubmitBtn, true);
 
   try {
-    // ---- 1. ندوّر على الطالب بالكود ----
     const snap = await getDocs(query(
       collection(db, "users"),
       where("studentId", "==", code)
@@ -598,12 +606,10 @@ async function registerManually() {
       return;
     }
 
-    // ---- 2. هل هو في المجموعة دي؟ ----
     const inThisGroup = (selectedGroup.studentIds || []).includes(student.uid);
     let otherGroupNames = [];
 
     if (!inThisGroup) {
-      // ندوّر على مجموعاته الحقيقية عند المدرس ده
       otherGroupNames = allGroups
         .filter((g) => (g.studentIds || []).includes(student.uid))
         .map((g) => g.groupName || "بدون اسم");
@@ -624,7 +630,6 @@ async function registerManually() {
       if (!confirmed) return;
     }
 
-    // ---- 3. هل هو مسجّل قبل كده النهاردة؟ ----
     const existing = recordsMap.get(student.uid);
     const newStatus = manualStatusSelect.value;
 
@@ -646,7 +651,6 @@ async function registerManually() {
       if (!confirmed) return;
     }
 
-    // ---- 4. نكتب السجل ----
     await saveRecord({
       student,
       status: newStatus,
@@ -673,7 +677,7 @@ async function registerManually() {
 }
 
 // ============================================
-// كتابة سجل حضور (بيستخدمها التسجيل اليدوي وأزرار الصفوف)
+// كتابة سجل حضور
 // ============================================
 async function saveRecord({ student, status, method, fromOtherGroup, otherGroupNames }) {
   const recordId = `${selectedGroup.id}_${selectedDate}_${student.uid}`;
@@ -695,8 +699,6 @@ async function saveRecord({ student, status, method, fromOtherGroup, otherGroupN
   };
 
   await setDoc(doc(db, "attendance", recordId), record);
-
-  // نحدّث النسخة المحلية عشان الواجهة تتحدّث فورًا من غير إعادة تحميل
   recordsMap.set(student.uid, { id: recordId, ...record });
 }
 
@@ -707,7 +709,6 @@ function renderList() {
   const searchTerm = (searchInput.value || "").trim().toLowerCase();
   const filterValue = filterSelect.value;
 
-  // ---- نبني الصفوف: طلبة المجموعة + أي طالب غريب اتسجّل ----
   const rows = [];
 
   groupStudents.forEach((student) => {
@@ -723,7 +724,6 @@ function renderList() {
     });
   });
 
-  // الطلبة اللي اتسجّلوا وهم مش في المجموعة
   const groupUids = new Set(groupStudents.map((s) => s.uid));
   recordsMap.forEach((record) => {
     if (groupUids.has(record.studentUid)) return;
@@ -739,10 +739,8 @@ function renderList() {
     });
   });
 
-  // ---- الإحصائيات (قبل الفلترة) ----
   updateStats(rows);
 
-  // ---- الفلترة والبحث ----
   const visible = rows.filter((row) => {
     if (filterValue !== "all" && row.status !== filterValue) return false;
 
@@ -754,7 +752,6 @@ function renderList() {
     return true;
   });
 
-  // ---- العرض ----
   if (rows.length === 0) {
     studentsListEl.innerHTML = "";
     listEmptyEl.classList.remove("hidden");
@@ -817,7 +814,6 @@ function renderList() {
 // الإحصائيات
 // ============================================
 function updateStats(rows) {
-  // إجمالي طلبة المجموعة (من غير الغرباء)
   const total = groupStudents.length;
 
   let present = 0;
@@ -828,7 +824,6 @@ function updateStats(rows) {
     if (row.status === "late") late++;
   });
 
-  // الغياب = طلبة المجموعة اللي مالهمش سجل
   const absent = groupStudents.filter((s) => !recordsMap.has(s.uid)).length;
 
   statTotal.textContent   = total;
@@ -840,8 +835,6 @@ function updateStats(rows) {
 // ============================================
 // أزرار الصفوف (حاضر / متأخر / شيل)
 // ============================================
-// بنستخدم Event Delegation: مستمع واحد على القايمة كلها بدل
-// مستمع لكل زرار — أسرع وبيشتغل مع الصفوف الجديدة تلقائيًا
 studentsListEl.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-action]");
   if (!btn) return;
@@ -865,15 +858,13 @@ studentsListEl.addEventListener("click", async (e) => {
   }
 });
 
-// تغيير حالة طالب
 async function changeStatus(uid, status) {
   const existing = recordsMap.get(uid);
 
-  // لو عنده سجل بالفعل، نحدّث الحالة بس
   if (existing) {
     await updateDoc(doc(db, "attendance", existing.id), {
       status,
-      method: "manual",     // أي تعديل من المدرس بيبقى يدوي
+      method: "manual",
       recordedAt: serverTimestamp()
     });
 
@@ -885,7 +876,6 @@ async function changeStatus(uid, status) {
     return;
   }
 
-  // مالوش سجل → طالب غايب بنسجّله دلوقتي
   const student = groupStudents.find((s) => s.uid === uid);
   if (!student) {
     showToast("مش لاقي بيانات الطالب.", "error");
@@ -903,7 +893,6 @@ async function changeStatus(uid, status) {
   showToast(`تم تسجيل ${student.fullName} — ${statusLabel(status)}.`, "success");
 }
 
-// شيل سجل الحضور (يرجع غايب)
 async function removeRecord(uid) {
   const existing = recordsMap.get(uid);
   if (!existing) return;
@@ -917,7 +906,7 @@ async function removeRecord(uid) {
   });
 
   if (!confirmed) {
-    renderList();  // نرجّع الزرار لحالته
+    renderList();
     return;
   }
 
@@ -934,7 +923,7 @@ searchInput.addEventListener("input", renderList);
 filterSelect.addEventListener("change", renderList);
 
 // ============================================
-// رابط كشف الغياب (بنمرر المجموعة والتاريخ)
+// رابط كشف الغياب
 // ============================================
 function updateReportLink() {
   const params = new URLSearchParams();
@@ -947,11 +936,13 @@ function updateReportLink() {
   printReportLink.href = `print-attendance.html?${params.toString()}`;
 }
 
+gradeSelect.addEventListener("change", updateReportLink);
+groupSelect.addEventListener("change", updateReportLink);
+dateInput.addEventListener("change", updateReportLink);
+
 // ============================================
 // دوال مساعدة
 // ============================================
-
-// تصفير العرض لما مفيش مجموعة مختارة
 function resetGroupView() {
   selectedGroup = null;
   groupStudents = [];
@@ -967,22 +958,18 @@ function resetGroupView() {
   updateReportLink();
 }
 
-// تاريخ النهاردة بصيغة YYYY-MM-DD بالتوقيت المحلي
-// (مش بنستخدم toISOString مباشرة لأنها بتحوّل لـ UTC وممكن ترجّع يوم غلط)
 function todayStr() {
   const now = new Date();
   const offsetMs = now.getTimezoneOffset() * 60000;
   return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
-// اسم الحالة بالعربي
 function statusLabel(status) {
   if (status === "present") return "حاضر";
   if (status === "late") return "متأخر";
   return "غايب";
 }
 
-// حالة التحميل على الزرار
 function setButtonLoading(btn, isLoading) {
   if (isLoading) {
     btn.dataset.originalText = btn.textContent;
@@ -994,7 +981,6 @@ function setButtonLoading(btn, isLoading) {
   }
 }
 
-// عرض حالة خطأ عامة
 function showError(message) {
   loadingEl.classList.add("hidden");
   contentEl.classList.add("hidden");
@@ -1002,15 +988,9 @@ function showError(message) {
   errorTextEl.textContent = message;
 }
 
-// منع XSS: أي نص جاي من قاعدة البيانات لازم يعدي من هنا قبل innerHTML
 function escapeHtml(text) {
   if (text === null || text === undefined) return "";
   const div = document.createElement("div");
   div.textContent = String(text);
   return div.innerHTML;
 }
-
-// نحدّث رابط التقرير مع أي تغيير
-gradeSelect.addEventListener("change", updateReportLink);
-groupSelect.addEventListener("change", updateReportLink);
-dateInput.addEventListener("change", updateReportLink);
