@@ -68,15 +68,25 @@ function showPageMessage(text, type = "") {
 // ------- حماية الصفحة -------
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "../index.html"; return; }
-  const userDoc = await getDoc(doc(db, "users", user.uid));
+
+  currentTeacherId = user.uid;
+
+  // بنشغّل التلاتة مع بعض بدل واحدة ورا التانية.
+  // كلهم محتاجين الـ uid بس، وده متاح من أول لحظة — فمفيش سبب
+  // إن جلب المواد يستنى التحقق من الدور يخلص.
+  const [userDoc] = await Promise.all([
+    getDoc(doc(db, "users", user.uid)),
+    loadTeacherGroups(),
+    loadMaterials()
+  ]);
+
+  // التحقق من الدور بيحصل بعد ما البيانات وصلت.
+  // لو طلع مش مدرس، بنطرده بره فورًا وقواعد Firestore أصلاً
+  // كانت هترفض تديله بيانات مش بتاعته.
   if (!userDoc.exists() || userDoc.data().role !== "teacher") {
     window.location.href = "../index.html";
     return;
   }
-  currentTeacherId = user.uid;
-
-  await loadTeacherGroups();
-  await loadMaterials();
 });
 
 // ============================================
