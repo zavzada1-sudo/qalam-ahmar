@@ -153,7 +153,10 @@ async function loadStudents() {
           uid: s.id,
           fullName: d.fullName || "طالب بدون اسم",
           studentId: d.studentId || "—",
-          email: d.email || ""
+          email: d.email || "",
+          phone: d.phone || "",
+          parentPhoneCall: d.parentPhoneCall || "",
+          parentPhoneWhatsapp: d.parentPhoneWhatsapp || ""
         };
       });
 
@@ -192,10 +195,36 @@ function renderStudents() {
   visible.forEach((s) => {
     const row = document.createElement("div");
     row.className = "gd-row";
+    // سطر رقم الطالب نفسه (لو موجود)
+    let studentLine = "";
+    if (s.phone) {
+      studentLine = `
+        <span class="gd-row-parent">
+          📞 الطالب:
+          <a href="tel:${escapeHtml(s.phone)}">${escapeHtml(s.phone)}</a>
+        </span>
+      `;
+    }
+
+    // سطر رقم ولي الأمر (لو موجود)، مع لينكات مباشرة للاتصال والواتساب
+    let parentLine = "";
+    if (s.parentPhoneCall) {
+      const waNumber = (s.parentPhoneWhatsapp || s.parentPhoneCall).replace(/\D/g, "");
+      parentLine = `
+        <span class="gd-row-parent">
+          👤 ولي الأمر:
+          <a href="tel:${escapeHtml(s.parentPhoneCall)}">${escapeHtml(s.parentPhoneCall)}</a>
+          <a href="https://wa.me/${escapeHtml(waNumber)}" target="_blank" rel="noopener">📱 واتساب</a>
+        </span>
+      `;
+    }
+
     row.innerHTML = `
       <div class="gd-row-info">
         <span class="gd-row-name">${escapeHtml(s.fullName)}</span>
         <span class="gd-row-code">${escapeHtml(s.studentId)}${s.email ? " · " + escapeHtml(s.email) : ""}</span>
+        ${studentLine}
+        ${parentLine}
       </div>
       <div class="gd-row-actions">
         <button class="gd-btn gd-btn-primary">إعادة تعيين الباسورد</button>

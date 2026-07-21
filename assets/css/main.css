@@ -836,6 +836,18 @@ button { font-family: inherit; cursor: pointer; }
 .gd-row-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .gd-row-name { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gd-row-code { font-size: .8rem; color: var(--text-light); }
+.gd-row-parent {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+.gd-row-parent a {
+  color: var(--primary);
+  text-decoration: none;
+  margin-inline-start: 6px;
+}
+.gd-row-parent a:hover { text-decoration: underline; }
 .gd-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .gd-empty { text-align: center; color: var(--text-light); padding: 14px; font-size: .9rem; }
 
