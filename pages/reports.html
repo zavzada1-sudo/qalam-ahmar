@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>التقارير - قلم أحمر</title>
+  <meta name="theme-color" content="#c0392b" />
+  <link rel="manifest" href="../manifest.json" />
+
+  <script>
+    if (localStorage.getItem('qalam_theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  </script>
+
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/rtl.css" />
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- ===== القائمة الجانبية ===== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="teacher-dashboard.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>لوحة التحكم</span>
+        </a>
+        <a href="create-exam.html" class="nav-item">
+          <span class="nav-icon">✦</span>
+          <span>إنشاء امتحان</span>
+        </a>
+        <a href="classes.html" class="nav-item">
+          <span class="nav-icon">▦</span>
+          <span>الفصول والطلاب</span>
+        </a>
+        <a href="materials.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          <span>المواد التعليمية</span>
+        </a>
+        <a href="attendance.html" class="nav-item">
+          <span class="nav-icon">📋</span>
+          <span>الحضور</span>
+        </a>
+        <a href="teacher-profile.html" class="nav-item">
+          <span class="nav-icon">👤</span>
+          <span>حسابي</span>
+        </a>
+        <button class="nav-item active" type="button">
+          <span class="nav-icon">▤</span>
+          <span>التقارير</span>
+        </button>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- ===== المحتوى الرئيسي ===== -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar no-print">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>التقارير</h1>
+            <p>متابعة أداء المجموعة وكل طالب على حدة</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- ===== حالة التحميل ===== -->
+      <div id="loadingState" class="exam-loading no-print">
+        <div class="loading-spinner"></div>
+        <p>بنحمّل البيانات...</p>
+      </div>
+
+      <!-- ===== حالة الخطأ ===== -->
+      <div id="errorState" class="exam-error hidden no-print">
+        <div class="error-icon">⚠️</div>
+        <h3 id="errorText"></h3>
+      </div>
+
+      <!-- ===== المحتوى ===== -->
+      <div id="contentWrapper" class="hidden">
+
+        <!-- ===== اختيار المجموعة ===== -->
+        <div class="rp-card no-print">
+          <div class="rp-selectors">
+            <div class="form-group">
+              <label for="gradeSelect">السنة الدراسية</label>
+              <select id="gradeSelect" class="rp-select">
+                <option value="">اختر السنة...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="groupSelect">المجموعة</label>
+              <select id="groupSelect" class="rp-select" disabled>
+                <option value="">اختر المجموعة...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== حالة البداية ===== -->
+        <div id="pickPrompt" class="empty-state no-print">
+          <div class="empty-icon">📊</div>
+          <h3>اختر السنة والمجموعة</h3>
+          <p>هتشوف أداء كل طلبة المجموعة، وتقدر تدوس على أي طالب لتقريره التفصيلي.</p>
+        </div>
+
+        <!-- ========================================= -->
+        <!-- ===== العرض 1: تقرير المجموعة كاملة ===== -->
+        <!-- ========================================= -->
+        <div id="groupView" class="hidden">
+
+          <div class="rp-print-bar no-print">
+            <button id="printGroupBtn" class="btn btn-primary" type="button">
+              🖨 اطبع / احفظ PDF
+            </button>
+            <span class="rp-print-hint">اختار "حفظ كـ PDF" في نافذة الطباعة</span>
+          </div>
+
+          <div class="rp-report">
+
+            <div class="rp-doc-head">
+              <h2 id="groupReportTitle">تقرير المجموعة</h2>
+              <p id="groupReportMeta"></p>
+            </div>
+
+            <!-- ملخص المجموعة -->
+            <div id="groupSummary" class="rp-summary"></div>
+
+            <!-- أدوات البحث (متطبعش) -->
+            <div class="rp-toolbar no-print">
+              <input
+                type="search"
+                id="searchInput"
+                class="gd-search"
+                placeholder="ابحث باسم الطالب أو كوده..."
+                autocomplete="off"
+              />
+              <select id="sortSelect" class="rp-select">
+                <option value="name">ترتيب أبجدي</option>
+                <option value="avg_desc">الأعلى متوسط</option>
+                <option value="avg_asc">الأقل متوسط</option>
+                <option value="improve_desc">الأكثر تحسّنًا</option>
+                <option value="improve_asc">الأكثر تراجعًا</option>
+                <option value="attend_asc">الأكثر غيابًا</option>
+              </select>
+            </div>
+
+            <div class="rp-table-wrap">
+              <table id="groupTable" class="rp-table"></table>
+            </div>
+
+            <p class="rp-legend">
+              ↑ تحسّن &nbsp;·&nbsp; ↓ تراجع &nbsp;·&nbsp;
+              التحسّن = الفرق بين متوسط آخر نصف من التقييمات ومتوسط النصف اللي قبله
+            </p>
+
+            <div class="rp-footer">
+              <div class="rp-sign">توقيع المدرس: ..............................</div>
+              <div class="rp-sign">التاريخ: ..............................</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================= -->
+        <!-- ===== العرض 2: تقرير طالب واحد ===== -->
+        <!-- ========================================= -->
+        <div id="studentView" class="hidden">
+
+          <div class="rp-print-bar no-print">
+            <button id="backBtn" class="btn btn-outline" type="button">← رجوع للمجموعة</button>
+            <button id="printStudentBtn" class="btn btn-primary" type="button">
+              🖨 اطبع / احفظ PDF
+            </button>
+          </div>
+
+          <div class="rp-report">
+
+            <div class="rp-doc-head">
+              <h2 id="studentReportTitle">تقرير الطالب</h2>
+              <p id="studentReportMeta"></p>
+            </div>
+
+            <!-- ملخص الطالب -->
+            <div id="studentSummary" class="rp-summary"></div>
+
+            <!-- الامتحانات والواجبات -->
+            <h3 class="rp-section-title">الامتحانات والواجبات</h3>
+            <div class="rp-table-wrap">
+              <table id="studentExamsTable" class="rp-table"></table>
+            </div>
+
+            <!-- الحضور -->
+            <h3 class="rp-section-title">سجل الحضور</h3>
+            <div id="studentAttendance" class="rp-attendance"></div>
+
+            <div class="rp-footer">
+              <div class="rp-sign">توقيع ولي الأمر: ..............................</div>
+              <div class="rp-sign">توقيع المدرس: ..............................</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <style>
+    /* ---------- كروت ---------- */
+    .rp-card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .rp-selectors {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .rp-selectors .form-group { margin-bottom: 0; }
+
+    .rp-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border, #ddd);
+      border-radius: var(--radius-sm, 8px);
+      font-family: inherit;
+      font-size: .9rem;
+      background: var(--input-bg, #fff);
+      color: var(--text);
+    }
+    .rp-select:focus { outline: none; border-color: var(--primary); }
+    .rp-select:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* ---------- شريط الطباعة ---------- */
+    .rp-print-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .rp-print-hint { font-size: 12px; color: var(--text-light); }
+
+    /* ---------- التقرير ---------- */
+    .rp-report {
+      background: #fff;
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 26px;
+      color: #222;
+    }
+
+    .rp-doc-head {
+      text-align: center;
+      border-bottom: 2px solid #c0392b;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .rp-doc-head h2 { font-size: 20px; color: #c0392b; margin-bottom: 4px; }
+    .rp-doc-head p { font-size: 13px; color: #555; }
+
+    .rp-section-title {
+      font-size: 15px;
+      color: #c0392b;
+      margin: 24px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* ---------- الملخص ---------- */
+    .rp-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .rp-summary-item {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .rp-summary-item strong {
+      display: block;
+      font-size: 19px;
+      color: #c0392b;
+      margin-bottom: 3px;
+    }
+    .rp-summary-item span { font-size: 11.5px; color: #666; }
+
+    /* ---------- شريط البحث ---------- */
+    .rp-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .rp-toolbar .gd-search { flex: 1; min-width: 190px; margin-bottom: 0; }
+    .rp-toolbar .rp-select { width: auto; min-width: 150px; }
+
+    /* ---------- الجداول ---------- */
+    .rp-table-wrap { overflow-x: auto; }
+
+    .rp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .rp-table th, .rp-table td {
+      border: 1px solid #ddd;
+      padding: 8px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .rp-table th {
+      background: #f5f5f5;
+      font-weight: 700;
+      font-size: 11.5px;
+      color: #333;
+    }
+    .rp-table td.cell-name {
+      text-align: start;
+      white-space: normal;
+      min-width: 130px;
+      font-weight: 600;
+    }
+    .rp-table td.cell-code { font-family: monospace; letter-spacing: .5px; }
+    .rp-table tbody tr:nth-child(even) { background: #fafafa; }
+
+    /* صف قابل للضغط */
+    .rp-table tbody tr.rp-clickable { cursor: pointer; }
+    .rp-table tbody tr.rp-clickable:hover { background: #fff3f2; }
+
+    /* ---------- ألوان النسب ---------- */
+    .val-good { color: #27ae60; font-weight: 700; }
+    .val-mid  { color: #e67e22; font-weight: 700; }
+    .val-bad  { color: #c0392b; font-weight: 700; }
+    .val-none { color: #999; }
+
+    .trend-up   { color: #27ae60; font-weight: 700; }
+    .trend-down { color: #c0392b; font-weight: 700; }
+    .trend-flat { color: #888; }
+
+    .rp-legend {
+      font-size: 11.5px;
+      color: #777;
+      margin-top: 10px;
+      line-height: 1.8;
+    }
+
+    /* ---------- سجل الحضور في تقرير الطالب ---------- */
+    .rp-attendance {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 6px;
+    }
+    .rp-att-day {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 7px 5px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .rp-att-day strong { display: block; font-size: 11.5px; margin-bottom: 2px; }
+    .rp-att-day.present { border-color: #b7e4c7; background: #f0fbf3; color: #1e7e45; }
+    .rp-att-day.late    { border-color: #ffe0b2; background: #fff8ef; color: #b9651a; }
+    .rp-att-day.absent  { border-color: #f5c6c2; background: #fdf2f1; color: #a93226; }
+
+    /* ---------- التذييل ---------- */
+    .rp-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1px solid #ddd;
+      font-size: 13px;
+      color: #444;
+    }
+
+    /* ---------- الطباعة ---------- */
+    @media print {
+      .no-print { display: none !important; }
+      .sidebar, .sidebar-backdrop { display: none !important; }
+      .dashboard-content { margin: 0; padding: 0; }
+
+      .rp-report { border: none; border-radius: 0; padding: 0; }
+      .rp-table { font-size: 10.5px; }
+      .rp-table th, .rp-table td { padding: 4px 3px; }
+      .rp-table-wrap { overflow: visible; }
+      .rp-table tr { page-break-inside: avoid; }
+      .rp-table tbody tr.rp-clickable { cursor: default; }
+
+      @page { margin: 12mm; }
+    }
+
+    @media (max-width: 640px) {
+      .rp-toolbar .rp-select { width: 100%; }
+    }
+  </style>
+
+  <script type="module" src="../js/teacher/reports.js"></script>
+</body>
+</html>
