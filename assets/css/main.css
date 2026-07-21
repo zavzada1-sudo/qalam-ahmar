@@ -932,16 +932,19 @@ button { font-family: inherit; cursor: pointer; }
   width: 26px; height: 26px; border-radius: 50%; background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; flex-shrink: 0;
 }
-.q-option-text {
+/* الدائرة بتاعة الإجابة الصحيحة والاختيارات:
+   لازم نكتبهم بوزن أقوى من قاعدة ".form-group input { width:100% }"
+   العامة، وإلا المتصفح هيتجاهلهم ويدي الدائرة عرض الصف كله */
+.form-group input.q-correct-radio {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.form-group input.q-option-text {
   flex: 1 1 0%;
   min-width: 0;
   width: 100%;
-}
-/* الدائرة بتاعة الإجابة الصحيحة: نلغي عليها width:100% اللي بييجيلها
-   من قاعدة .form-group input العامة، عشان متاخدش عرض الصف كله */
-.q-correct-radio {
-  width: auto;
-  flex: 0 0 auto;
 }
 
 .exam-bottom-actions {
