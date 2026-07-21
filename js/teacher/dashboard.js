@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, setDoc, updateDoc,deleteDoc, collection, query, where, getDocs }
+import { doc, getDoc, setDoc, updateDoc,deleteDoc, collection, query, where, getDocs,onsnapshot}
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { showToast, showConfirm } from "../shared/ui.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
@@ -77,40 +77,41 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ------- جلب امتحانات المدرس + حساب الإحصائيات -------
-async function loadTeacherExams(teacherId) {
-  renderSkeleton(examsListEl, { type: "card", count: 3 }); // بدل ما نسيبها فاضية وقت التحميل
+// مرجع للاستماع الحالي عشان نقدر نوقفه ونمنع تكراره
+let unsubscribeExams = null;
 
-  
+function loadTeacherExams(teacherId) {
+  renderSkeleton(examsListEl, { type: "card", count: 3 });
 
-  try {
-    const examsQuery = query(
-      collection(db, "exams"),
-      where("teacherId", "==", teacherId)
-    );
-    const snapshot = await getDocs(examsQuery);
+  if (unsubscribeExams) unsubscribeExams();
 
-    // عدد الامتحانات = عدد المستندات
-    assessmentsCountEl.textContent = snapshot.size;
+  // onSnapshot بدل getDocs: البيانات بتظهر فورًا من الكاش المحلي،
+  // والتحديث من السيرفر بييجي بعدها. وكمان أي امتحان جديد أو محذوف
+  // بيتحدّث في الشاشة لوحده من غير reload.
+  unsubscribeExams = onSnapshot(
+    query(collection(db, "exams"), where("teacherId", "==", teacherId)),
+    (snapshot) => {
+      assessmentsCountEl.textContent = snapshot.size;
 
-    if (snapshot.empty) {
-      examsListEl.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📝</div>
-          <h3>لسه مفيش امتحانات</h3>
-          <p>ابدأ بإنشاء أول امتحان لطلابك.</p>
-          <a href="create-exam.html" class="btn btn-primary">+ إنشاء أول امتحان</a>
-        </div>
-      `;
-      return;
-    }
+      if (snapshot.empty) {
+        examsListEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <h3>لسه مفيش امتحانات</h3>
+            <p>ابدأ بإنشاء أول امتحان لطلابك.</p>
+            <a href="create-exam.html" class="btn btn-primary">+ إنشاء أول امتحان</a>
+          </div>
+        `;
+        return;
+      }
 
-    examsListEl.innerHTML = "";
-    snapshot.forEach((examDoc) => {
-      const exam = examDoc.data();
-      const card = document.createElement("div");
-      card.className = "exam-card";
-      card.style.cursor = "pointer";
-      card.innerHTML = `
+      examsListEl.innerHTML = "";
+      snapshot.forEach((examDoc) => {
+        const exam = examDoc.data();
+        const card = document.createElement("div");
+        card.className = "exam-card";
+        card.style.cursor = "pointer";
+        card.innerHTML = `
   <div class="exam-card-actions">
     ${exam.status === "published"
       ? `<button class="exam-grades-btn" title="عرض النتائج">📊</button>
@@ -126,45 +127,46 @@ async function loadTeacherExams(teacherId) {
   </div>
 `;
 
-      // فتح الامتحان للتعديل
-      card.addEventListener("click", () => {
-        window.location.href = `create-exam.html?examId=${examDoc.id}`;
-      });
-
-      // حذف الامتحان (مع منع فتح صفحة التعديل)
-      card.querySelector(".exam-delete-btn").addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await deleteExam(examDoc.id, exam.title || "بدون عنوان", teacherId);
-      });
-      // زرار الطباعة (بيظهر بس لو الامتحان منشور)
-      const printBtn = card.querySelector(".exam-print-btn");
-      if (printBtn) {
-        printBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          window.open(`print-exam.html?examId=${examDoc.id}`, "_blank");
+        // فتح الامتحان للتعديل
+        card.addEventListener("click", () => {
+          window.location.href = `create-exam.html?examId=${examDoc.id}`;
         });
-      }
 
-      // زرار النتائج (بيظهر بس لو الامتحان منشور)
-      const gradesBtn = card.querySelector(".exam-grades-btn");
-      if (gradesBtn) {
-        gradesBtn.addEventListener("click", (e) => {
+        // حذف الامتحان (مع منع فتح صفحة التعديل)
+        card.querySelector(".exam-delete-btn").addEventListener("click", async (e) => {
           e.stopPropagation();
-          window.location.href = `grades.html?examId=${examDoc.id}`;
+          await deleteExam(examDoc.id, exam.title || "بدون عنوان", teacherId);
         });
-      }
 
+        // زرار الطباعة (بيظهر بس لو الامتحان منشور)
+        const printBtn = card.querySelector(".exam-print-btn");
+        if (printBtn) {
+          printBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            window.open(`print-exam.html?examId=${examDoc.id}`, "_blank");
+          });
+        }
 
-      examsListEl.appendChild(card);
-    });
+        // زرار النتائج (بيظهر بس لو الامتحان منشور)
+        const gradesBtn = card.querySelector(".exam-grades-btn");
+        if (gradesBtn) {
+          gradesBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            window.location.href = `grades.html?examId=${examDoc.id}`;
+          });
+        }
 
-  } catch (error) {
-    console.error("Error loading exams:", error);
-    renderErrorState(examsListEl, {
-      message: "تعذر تحميل الامتحانات، حاول تحديث الصفحة",
-      onRetry: () => loadTeacherExams(teacherId),
-    });
-  }
+        examsListEl.appendChild(card);
+      });
+    },
+    (error) => {
+      console.error("Error loading exams:", error);
+      renderErrorState(examsListEl, {
+        message: "تعذر تحميل الامتحانات، حاول تحديث الصفحة",
+        onRetry: () => loadTeacherExams(teacherId),
+      });
+    }
+  );
 }
 
 // ------- حساب عدد الفصول (المجموعات) وعدد الطلاب الفريدين -------
