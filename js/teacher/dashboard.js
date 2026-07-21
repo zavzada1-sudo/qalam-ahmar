@@ -66,7 +66,9 @@ onAuthStateChanged(auth, async (user) => {
 
 
     // تحميل الامتحانات والإحصائيات
+    // تحميل الامتحانات والإحصائيات
     await loadTeacherExams(user.uid);
+    await loadClassesAndStudentsCount(user.uid);
 
   } catch (error) {
     console.error("Dashboard load error:", error);
@@ -77,6 +79,8 @@ onAuthStateChanged(auth, async (user) => {
 // ------- جلب امتحانات المدرس + حساب الإحصائيات -------
 async function loadTeacherExams(teacherId) {
   renderSkeleton(examsListEl, { type: "card", count: 3 }); // بدل ما نسيبها فاضية وقت التحميل
+
+  
 
   try {
     const examsQuery = query(
@@ -162,6 +166,37 @@ async function loadTeacherExams(teacherId) {
     });
   }
 }
+
+// ------- حساب عدد الفصول (المجموعات) وعدد الطلاب الفريدين -------
+async function loadClassesAndStudentsCount(teacherId) {
+  try {
+    const groupsQuery = query(
+      collection(db, "groups"),
+      where("teacherId", "==", teacherId)
+    );
+    const snapshot = await getDocs(groupsQuery);
+
+    // عدد الفصول = عدد المجموعات
+    classesCountEl.textContent = snapshot.size;
+
+    // عدد الطلاب = عدد الأكواد الفريدة (الطالب ممكن يكون في أكتر من مجموعة،
+    // فمش بنعدّه مرتين)
+    const uniqueStudentIds = new Set();
+    snapshot.forEach((groupDoc) => {
+      const studentIds = groupDoc.data().studentIds || [];
+      studentIds.forEach((id) => uniqueStudentIds.add(id));
+    });
+
+    studentsCountEl.textContent = uniqueStudentIds.size;
+
+  } catch (error) {
+    console.error("Error loading classes/students count:", error);
+    classesCountEl.textContent = "—";
+    studentsCountEl.textContent = "—";
+  }
+}
+
+
 
 // ------- ترجمة القيم لنصوص عربية -------
 function translateExamType(type) {
