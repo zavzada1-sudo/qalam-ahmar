@@ -25,6 +25,8 @@ const errorState = document.getElementById("errorState");
 const errorText = document.getElementById("errorText");
 const contentWrapper = document.getElementById("contentWrapper");
 
+const paymentCard = document.getElementById("paymentCard");
+
 const profileAvatar = document.getElementById("profileAvatar");
 const profileName = document.getElementById("profileName");
 const profileEmail = document.getElementById("profileEmail");
@@ -46,6 +48,7 @@ const groupsList = document.getElementById("groupsList");
 let currentStudentId = null;
 const teacherCache = new Map(); // teacherId -> اسم المدرس
 const gradeCache = new Map();   // gradeId -> اسم السنة
+let paymentsData = [];          // مواعيد الدفع اللي أي مدرس حددها للطالب ده
 
 // ------- القائمة الجانبية (موبايل) -------
 if (menuToggle) menuToggle.addEventListener("click", () => {
@@ -76,7 +79,12 @@ onAuthStateChanged(auth, async (user) => {
     currentStudentId = user.uid;
 
     fillProfileInfo(userDoc.data());
-    await loadMyGroups();
+
+    // نحمّل المجموعات (بيبني كاش أسماء المدرسين) ومواعيد الدفع بالتوازي
+    await Promise.all([loadMyGroups(), loadPayments()]);
+
+    // نعرض كارت الدفع بعد ما الاتنين يخلصوا (عشان اسم المدرس يبقى جاهز في الكاش)
+    renderPaymentCards();
 
     loadingState.classList.add("hidden");
     contentWrapper.classList.remove("hidden");
@@ -198,6 +206,84 @@ async function ensureNamesLoaded(groups) {
   gradeSnaps.forEach((s) => {
     if (s.exists()) gradeCache.set(s.id, s.data().gradeName || "");
   });
+}
+
+// ============================================
+// كارت موعد الدفع (بند جديد)
+// ============================================
+// ملحوظة: الطالب ممكن يكون منضم لأكتر من مدرس، فكل مدرس ممكن يحدد
+// موعد دفع مستقل. لو فيه أكتر من موعد، بيتعرضوا كلهم ككروت منفصلة.
+
+// تحميل كل مواعيد الدفع الخاصة بالطالب ده (من أي مدرس)
+async function loadPayments() {
+  try {
+    const snap = await getDocs(query(
+      collection(db, "payments"),
+      where("studentUid", "==", currentStudentId)
+    ));
+    paymentsData = [];
+    snap.forEach((d) => paymentsData.push(d.data()));
+  } catch (error) {
+    console.error("Load payments error:", error);
+    paymentsData = []; // مش خطأ فادح — الكارت هيفضل مخفي وبس
+  }
+}
+
+// عرض كارت (أو أكتر) لمواعيد الدفع، أو إخفاء القسم بالكامل لو مفيش حاجة
+function renderPaymentCards() {
+  if (paymentsData.length === 0) {
+    paymentCard.classList.add("hidden");
+    return;
+  }
+
+  paymentCard.classList.remove("hidden");
+  paymentCard.innerHTML = paymentsData.map((p) => {
+    const days = daysUntil(p.nextPaymentDate);
+    const teacherName = teacherCache.get(p.teacherId) || "المدرس";
+
+    let text, overdueClass = "";
+    if (days === null) {
+      text = "موعد الدفع غير محدد بوضوح";
+    } else if (days < 0) {
+      text = `متأخر عن الموعد بـ ${Math.abs(days)} يوم`;
+      overdueClass = "overdue";
+    } else if (days === 0) {
+      text = "موعد الدفع اليوم";
+      overdueClass = "overdue";
+    } else {
+      text = `باقي ${days} يوم على موعد الدفع`;
+    }
+
+    return `
+      <div class="sp-payment-row ${overdueClass}">
+        <span class="sp-payment-icon">💰</span>
+        <div>
+          <p class="sp-payment-text">
+            أ/ ${escapeHtml(teacherName)} — ${escapeHtml(text)} (${formatShortDate(p.nextPaymentDate)})
+          </p>
+          ${p.amount ? `<p class="sp-payment-sub">المبلغ: ${escapeHtml(String(p.amount))}</p>` : ""}
+          ${p.note ? `<p class="sp-payment-sub">${escapeHtml(p.note)}</p>` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// عدد الأيام المتبقية لتاريخ معيّن (سالب = متأخر، صفر = النهارده)
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(`${dateStr}T00:00:00`);
+  if (isNaN(target.getTime())) return null;
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((target.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// تاريخ مختصر (يوم/شهر)
+function formatShortDate(dateStr) {
+  const parts = String(dateStr).split("-");
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}`;
 }
 
 // ------- حالة الخطأ -------

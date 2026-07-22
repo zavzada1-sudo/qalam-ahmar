@@ -124,6 +124,19 @@
         <input type="search" id="studentSearch" class="gd-search"
                placeholder="ابحث باسم الطالب أو الكود أو الإيميل..." autocomplete="off">
 
+        <!-- شريط تحديد الطلبة + إجراءات موعد الدفع (بند جديد) -->
+        <div class="pm-select-bar">
+          <label class="pm-select-all">
+            <input type="checkbox" id="selectAllCheckbox">
+            <span>تحديد الكل</span>
+          </label>
+          <span id="selectedCount" class="pm-selected-count hidden"></span>
+          <div class="pm-actions hidden" id="paymentActionsBar">
+            <button type="button" class="btn btn-primary" id="setPaymentBtn">💰 تحديد موعد الدفع</button>
+            <button type="button" class="btn btn-outline" id="clearPaymentBtn">إلغاء موعد الدفع</button>
+          </div>
+        </div>
+
         <div id="studentsMessage" class="gd-message"></div>
 
         <div id="studentsList" class="gd-list">
@@ -133,6 +146,109 @@
 
     </main>
   </div>
+
+  <style>
+    /* ---------- شريط التحديد المتعدد ---------- */
+    .pm-select-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin: 10px 0 6px;
+    }
+    .pm-select-all {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text);
+    }
+    .pm-selected-count {
+      font-size: 13px;
+      color: var(--text-light, #777);
+    }
+    .pm-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ---------- checkbox جنب كل طالب ---------- */
+    .pm-checkbox-wrap {
+      display: flex;
+      align-items: flex-start;
+      padding-inline-end: 10px;
+      padding-top: 4px;
+    }
+    .pm-student-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    /* ---------- شارة موعد الدفع في صف الطالب ---------- */
+    .pm-badge {
+      display: inline-block;
+      font-size: 11.5px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #fff8ef;
+      border: 1px solid #ffe0b2;
+      color: #b9651a;
+      margin-top: 4px;
+    }
+    .pm-badge.overdue {
+      background: #fdecea;
+      border-color: #e6a19b;
+      color: #c0392b;
+    }
+
+    /* ---------- مودال تحديد موعد الدفع ---------- */
+    .pm-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(17, 24, 39, 0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; padding: 16px;
+    }
+    .pm-modal {
+      background: var(--card-bg, #fff);
+      border-radius: var(--radius, 14px);
+      max-width: 380px; width: 100%;
+      padding: 22px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+    .pm-modal h3 { margin: 0 0 16px; font-size: 17px; color: var(--text, #222); }
+    .pm-form-group { margin-bottom: 14px; }
+    .pm-form-group label {
+      display: block;
+      font-size: 12.5px;
+      color: var(--text-light, #777);
+      margin-bottom: 5px;
+    }
+    .pm-form-group input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--border, #ddd);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      background: var(--input-bg, #fff);
+      color: var(--text);
+    }
+    .pm-form-group input:focus { outline: none; border-color: #c0392b; }
+    .pm-modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 640px) {
+      .pm-select-bar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
 
   <script type="module" src="../js/teacher/teacher-profile.js"></script>
 
