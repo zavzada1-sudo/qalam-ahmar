@@ -200,6 +200,10 @@
             <!-- ملخص الطالب -->
             <div id="studentSummary" class="rp-summary"></div>
 
+            <!-- الرسم البياني لتطور الدرجات -->
+            <h3 class="rp-section-title">تطور الدرجات (آخر 10 تقييمات)</h3>
+            <div id="studentTrendChart" class="rp-chart"></div>
+
             <!-- الامتحانات والواجبات -->
             <h3 class="rp-section-title">الامتحانات والواجبات</h3>
             <div class="rp-table-wrap">
@@ -366,6 +370,25 @@
       margin-top: 10px;
       line-height: 1.8;
     }
+        /* ---------- الرسم البياني لتطور الدرجات ---------- */
+    .rp-chart {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    .trend-chart-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .chart-empty-text {
+      color: #999;
+      font-size: 13px;
+      text-align: center;
+      padding: 20px 0;
+    }
 
     /* ---------- سجل الحضور في تقرير الطالب ---------- */
     .rp-attendance {
@@ -410,6 +433,7 @@
       .rp-table-wrap { overflow: visible; }
       .rp-table tr { page-break-inside: avoid; }
       .rp-table tbody tr.rp-clickable { cursor: default; }
+      .rp-chart { page-break-inside: avoid; border: none; }
 
       @page { margin: 12mm; }
     }

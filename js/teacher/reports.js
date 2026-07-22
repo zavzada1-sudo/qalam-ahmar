@@ -32,7 +32,9 @@ import {
 
 import { showToast } from "../shared/ui.js";
 import { renderSkeleton } from "../shared/states.js";
+import { renderTrendChart } from "../shared/chart.js";
 import "../shared/theme.js";
+
 
 // ============================================
 // القائمة الجانبية
@@ -89,6 +91,7 @@ const studentView        = document.getElementById("studentView");
 const studentReportTitle = document.getElementById("studentReportTitle");
 const studentReportMeta  = document.getElementById("studentReportMeta");
 const studentSummary     = document.getElementById("studentSummary");
+const studentTrendChart  = document.getElementById("studentTrendChart");
 const studentExamsTable  = document.getElementById("studentExamsTable");
 const studentAttendance  = document.getElementById("studentAttendance");
 const backBtn            = document.getElementById("backBtn");
@@ -654,10 +657,25 @@ function renderStudentReport(row) {
   `;
 
   // ---- جدول الامتحانات ----
+  // ---- الرسم البياني لتطور الدرجات ----
+  renderScoreChart(row);
+
+  // ---- جدول الامتحانات ----
   renderStudentExams(row);
 
   // ---- سجل الحضور ----
   renderStudentAttendance(row);
+}
+
+// رسم بياني لتطور آخر 10 درجات مصححة (بنفس منطق حساب التحسّن)
+function renderScoreChart(row) {
+  if (!studentTrendChart) return;
+
+  const recentGraded = row.graded.slice(-10);
+  const values = recentGraded.map((s) => s.percentage);
+  const labels = recentGraded.map((s) => formatShortDateTime(s.submittedAt));
+
+  renderTrendChart(studentTrendChart, values, { labels });
 }
 
 // جدول امتحانات الطالب
