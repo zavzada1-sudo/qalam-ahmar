@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - تقاريري</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <script>
+  if (localStorage.getItem('qalam_theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+</script>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="student-home.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>الرئيسية</span>
+        </a>
+        <a href="student-join.html" class="nav-item">
+          <span class="nav-icon">＋</span>
+          <span>الانضمام لمدرس</span>
+        </a>
+        <a href="student-reports.html" class="nav-item active">
+          <span class="nav-icon">▦</span>
+          <span>التقارير</span>
+        </a>
+        <a href="student-profile.html" class="nav-item">
+          <span class="nav-icon">▣</span>
+          <span>حسابي</span>
+        </a>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar no-print">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>تقاريري</h1>
+            <p>أداؤك وحضورك في كل مجموعة منضم ليها</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- حالة التحميل -->
+      <div id="loadingState" class="exam-loading no-print">
+        <div class="loading-spinner"></div>
+        <p>بنحمّل تقاريرك...</p>
+      </div>
+
+      <!-- حالة الخطأ -->
+      <div id="errorState" class="exam-error hidden no-print">
+        <div class="error-icon">⚠️</div>
+        <h3 id="errorText"></h3>
+      </div>
+
+      <div id="contentWrapper" class="hidden">
+        <div class="rp-print-bar no-print">
+          <button id="printBtn" class="btn btn-primary" type="button">🖨 اطبع / احفظ PDF</button>
+        </div>
+
+        <div id="reportsContainer"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <style>
+    /* ---------- شريط الطباعة ---------- */
+    .rp-print-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    /* ---------- التقرير ---------- */
+    .rp-report {
+      background: #fff;
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 26px;
+      color: #222;
+      margin-bottom: 20px;
+    }
+
+    .rp-doc-head {
+      text-align: center;
+      border-bottom: 2px solid #c0392b;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .rp-doc-head h2 { font-size: 20px; color: #c0392b; margin-bottom: 4px; }
+    .rp-doc-head p { font-size: 13px; color: #555; }
+
+    .rp-section-title {
+      font-size: 15px;
+      color: #c0392b;
+      margin: 24px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* ---------- الملخص ---------- */
+    .rp-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .rp-summary-item {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .rp-summary-item strong {
+      display: block;
+      font-size: 19px;
+      color: #c0392b;
+      margin-bottom: 3px;
+    }
+    .rp-summary-item span { font-size: 11.5px; color: #666; }
+
+    /* ---------- الرسم البياني ---------- */
+    .rp-chart {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    .trend-chart-svg { width: 100%; height: auto; display: block; }
+    .chart-empty-text { color: #999; font-size: 13px; text-align: center; padding: 20px 0; }
+
+    /* ---------- الجداول ---------- */
+    .rp-table-wrap { overflow-x: auto; }
+    .rp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .rp-table th, .rp-table td {
+      border: 1px solid #ddd;
+      padding: 8px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .rp-table th {
+      background: #f5f5f5;
+      font-weight: 700;
+      font-size: 11.5px;
+      color: #333;
+    }
+    .rp-table td.cell-name {
+      text-align: start;
+      white-space: normal;
+      min-width: 130px;
+      font-weight: 600;
+    }
+    .rp-table tbody tr:nth-child(even) { background: #fafafa; }
+
+    /* ---------- ألوان النسب ---------- */
+    .val-good { color: #27ae60; font-weight: 700; }
+    .val-mid  { color: #e67e22; font-weight: 700; }
+    .val-bad  { color: #c0392b; font-weight: 700; }
+    .val-none { color: #999; }
+    .trend-up   { color: #27ae60; font-weight: 700; }
+    .trend-down { color: #c0392b; font-weight: 700; }
+    .trend-flat { color: #888; }
+
+    /* ---------- سجل الحضور ---------- */
+    .rp-attendance {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 6px;
+    }
+    .rp-att-day {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 7px 5px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .rp-att-day strong { display: block; font-size: 11.5px; margin-bottom: 2px; }
+    .rp-att-day.present { border-color: #b7e4c7; background: #f0fbf3; color: #1e7e45; }
+    .rp-att-day.late    { border-color: #ffe0b2; background: #fff8ef; color: #b9651a; }
+    .rp-att-day.absent  { border-color: #f5c6c2; background: #fdf2f1; color: #a93226; }
+
+    /* ---------- الطباعة ---------- */
+    @media print {
+      .no-print { display: none !important; }
+      .sidebar, .sidebar-backdrop { display: none !important; }
+      .dashboard-content { margin: 0; padding: 0; }
+      .rp-report { border: none; border-radius: 0; padding: 0; page-break-after: always; }
+      .rp-report:last-child { page-break-after: auto; }
+      .rp-table { font-size: 10.5px; }
+      .rp-table th, .rp-table td { padding: 4px 3px; }
+      .rp-table-wrap { overflow: visible; }
+      .rp-chart { page-break-inside: avoid; border: none; }
+      @page { margin: 12mm; }
+    }
+  </style>
+
+  <script type="module" src="../js/student/student-reports.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
