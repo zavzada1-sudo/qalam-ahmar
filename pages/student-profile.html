@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قلم أحمر - حسابي</title>
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="apple-touch-icon" href="../assets/icons/icon-192.png">
+  <script>
+  if (localStorage.getItem('qalam_theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+</script>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/rtl.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span>🖊️</span>
+        <span>قلم أحمر</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="student-home.html" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>الرئيسية</span>
+        </a>
+        <a href="student-join.html" class="nav-item">
+          <span class="nav-icon">＋</span>
+          <span>الانضمام لمدرس</span>
+        </a>
+        <a href="student-reports.html" class="nav-item">
+          <span class="nav-icon">▦</span>
+          <span>التقارير</span>
+        </a>
+        <a href="student-profile.html" class="nav-item active">
+          <span class="nav-icon">▣</span>
+          <span>حسابي</span>
+        </a>
+      </nav>
+
+      <button class="sidebar-logout" id="logoutBtn" type="button">
+        <span>↪</span>
+        <span>تسجيل الخروج</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="dashboard-content">
+
+      <header class="dashboard-topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="القائمة">☰</button>
+          <div class="topbar-greeting">
+            <h1>حسابي</h1>
+            <p>بياناتك الشخصية ومجموعاتك</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- حالة التحميل -->
+      <div id="loadingState" class="exam-loading">
+        <div class="loading-spinner"></div>
+        <p>بنحمّل بياناتك...</p>
+      </div>
+
+      <!-- حالة الخطأ -->
+      <div id="errorState" class="exam-error hidden">
+        <div class="error-icon">⚠️</div>
+        <h3 id="errorText"></h3>
+      </div>
+
+      <div id="contentWrapper" class="hidden">
+
+        <!--
+          كارت موعد الدفع — مخفي حاليًا.
+          هيتفعل في مرحلة لاحقة بعد ما نعمل كولكشن payments وقواعده،
+          وهيبان هنا فوق كل البيانات (زي ما اتفقنا) لو المدرس حدد موعد.
+        -->
+        <div id="paymentCard" class="sp-payment-card hidden"></div>
+
+        <!-- كارت البيانات الأساسية -->
+        <div class="sp-card">
+          <div class="sp-header">
+            <div class="sp-avatar" id="profileAvatar"></div>
+            <div>
+              <h2 id="profileName">—</h2>
+              <p id="profileEmail" class="sp-email">—</p>
+            </div>
+          </div>
+
+          <div class="sp-info-grid">
+            <div class="sp-info-item">
+              <span class="sp-info-label">كود الطالب</span>
+              <div class="sp-info-value-row">
+                <span id="profileCode" class="sp-code">—</span>
+                <button id="copyCodeBtn" class="sp-copy-btn" type="button" title="نسخ الكود">📋 نسخ</button>
+              </div>
+            </div>
+
+            <div class="sp-info-item hidden" id="phoneItem">
+              <span class="sp-info-label">رقم التليفون</span>
+              <a id="profilePhone" class="sp-info-link" href="#"></a>
+            </div>
+
+            <div class="sp-info-item hidden" id="parentCallItem">
+              <span class="sp-info-label">رقم ولي الأمر (مكالمات)</span>
+              <a id="profileParentCall" class="sp-info-link" href="#"></a>
+            </div>
+
+            <div class="sp-info-item hidden" id="parentWhatsappItem">
+              <span class="sp-info-label">رقم ولي الأمر (واتساب)</span>
+              <a id="profileParentWhatsapp" class="sp-info-link" href="#" target="_blank" rel="noopener"></a>
+            </div>
+          </div>
+        </div>
+
+        <!-- كارت المجموعات -->
+        <div class="sp-card">
+          <h3 class="sp-section-title">مجموعاتي</h3>
+          <div id="groupsList" class="sp-groups-list">
+            <p class="loading-text">جاري التحميل...</p>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <style>
+    /* ---------- كارت موعد الدفع ---------- */
+    .sp-payment-card {
+      background: #fff8ef;
+      border: 1px solid #ffe0b2;
+      border-radius: var(--radius, 12px);
+      padding: 16px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sp-payment-card.overdue {
+      background: #fdecea;
+      border-color: #e6a19b;
+    }
+    .sp-payment-icon { font-size: 22px; }
+    .sp-payment-text { font-weight: 700; color: #b9651a; margin: 0; }
+    .sp-payment-card.overdue .sp-payment-text { color: #c0392b; }
+    .sp-payment-sub { font-size: 12.5px; color: #777; margin: 2px 0 0; }
+
+    /* ---------- كروت عامة ---------- */
+    .sp-card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e8e8e8);
+      border-radius: var(--radius, 12px);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    /* ---------- هيدر البروفايل ---------- */
+    .sp-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border, #eee);
+    }
+    .sp-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #c0392b;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .sp-header h2 { margin: 0 0 4px; font-size: 18px; color: var(--text, #222); }
+    .sp-email { margin: 0; font-size: 13px; color: var(--text-light, #777); }
+
+    /* ---------- شبكة البيانات ---------- */
+    .sp-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .sp-info-item { display: flex; flex-direction: column; gap: 4px; }
+    .sp-info-label { font-size: 12px; color: var(--text-light, #888); }
+    .sp-info-value-row { display: flex; align-items: center; gap: 8px; }
+    .sp-code {
+      font-family: monospace;
+      font-size: 16px;
+      letter-spacing: 1px;
+      font-weight: 700;
+      color: #c0392b;
+    }
+    .sp-copy-btn {
+      border: 1px solid var(--border, #ddd);
+      background: transparent;
+      color: var(--text, #333);
+      border-radius: 6px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 12.5px;
+    }
+    .sp-copy-btn:hover { background: var(--bg-hover, #f5f5f5); }
+    .sp-info-link { color: #c0392b; font-weight: 600; text-decoration: none; }
+    .sp-info-link:hover { text-decoration: underline; }
+
+    /* ---------- قسم المجموعات ---------- */
+    .sp-section-title {
+      font-size: 15px;
+      margin: 0 0 14px;
+      color: var(--text, #333);
+    }
+    .sp-groups-list { display: flex; flex-direction: column; gap: 10px; }
+    .sp-group-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 12px;
+      border: 1px solid var(--border, #eee);
+      border-radius: 8px;
+      font-size: 13.5px;
+    }
+    .sp-group-name { font-weight: 700; color: var(--text, #222); }
+    .sp-group-meta { color: var(--text-light, #888); font-size: 12px; }
+  </style>
+
+  <script type="module" src="../js/student/student-profile.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
