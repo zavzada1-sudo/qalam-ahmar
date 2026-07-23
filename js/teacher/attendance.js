@@ -38,6 +38,7 @@ import { showToast, showConfirm } from "../shared/ui.js";
 import { renderSkeleton } from "../shared/states.js";
 import { isValidCodeFormat } from "../shared/student-code.js";
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ============================================
 // عناصر القائمة الجانبية (نفس نمط باقي صفحات المدرس)

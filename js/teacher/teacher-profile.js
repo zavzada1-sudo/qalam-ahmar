@@ -11,6 +11,7 @@ import { showToast, showConfirm } from "../shared/ui.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");

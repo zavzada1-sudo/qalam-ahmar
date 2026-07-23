@@ -9,6 +9,7 @@ import { doc, getDoc }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 const loadingView = document.getElementById("loadingView");
 const errorView = document.getElementById("errorView");

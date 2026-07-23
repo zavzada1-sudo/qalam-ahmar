@@ -21,6 +21,7 @@ import {
 
 import { showToast } from "../shared/ui.js";
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const loadingEl     = document.getElementById("loadingState");

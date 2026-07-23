@@ -10,6 +10,7 @@ import { doc, setDoc }
 import { reserveStudentCode } from "../shared/student-code.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 let selectedRole = "teacher"; // القيمة الافتراضية
 

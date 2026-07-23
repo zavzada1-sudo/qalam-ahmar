@@ -11,6 +11,7 @@ import { showConfirm } from "../shared/ui.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ============================================
 // ⚠️ ضع الـ API Key بتاعك من imgbb.com هنا

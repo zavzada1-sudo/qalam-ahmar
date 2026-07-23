@@ -10,6 +10,7 @@ import { doc, getDoc, collection, query, where, getDocs, documentId, onSnapshot 
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- قراءة examId من الرابط: grades.html?examId=xxx -------
 const examId = new URLSearchParams(window.location.search).get("examId");

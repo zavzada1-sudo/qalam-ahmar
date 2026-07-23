@@ -11,6 +11,7 @@ import { doc, getDoc, collection, addDoc, deleteDoc, updateDoc,
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 import { showToast, showConfirm } from "../shared/ui.js";
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");

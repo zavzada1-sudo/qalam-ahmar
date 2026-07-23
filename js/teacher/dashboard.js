@@ -10,6 +10,7 @@ import { doc, getDoc, setDoc, updateDoc,deleteDoc, collection, query, where, get
 import { showToast, showConfirm } from "../shared/ui.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // عناصر الصفحة
 const teacherNameEl = document.getElementById("teacherName");
