@@ -269,6 +269,13 @@
             <h3>مفيش طلبة مطابقين</h3>
             <p>جرّب تغيّر كلمة البحث أو الفلتر.</p>
           </div>
+
+          <!-- ===== 🆕 التنقل بين الصفحات (Pagination) ===== -->
+          <div id="paginationWrapper" class="att-pagination hidden">
+            <button id="prevPageBtn" class="btn btn-outline" type="button">السابق</button>
+            <span id="pageInfo" class="att-page-info">صفحة 1 من 1</span>
+            <button id="nextPageBtn" class="btn btn-outline" type="button">التالي</button>
+          </div>
         </div>
 
         <!-- ===== 7) حالة "لسه ما اخترتش مجموعة" ===== -->
@@ -432,6 +439,30 @@
       background: var(--orange-light, #fff5e6);
     }
 
+    /* ---------- 🆕 التنقل بين الصفحات ---------- */
+    .att-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .att-pagination .btn {
+      padding: 8px 18px;
+      font-size: .85rem;
+    }
+    .att-pagination .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .att-page-info {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+
     /* ---------- الطباعة: نطبع كارت الـ QR بس ---------- */
     @media print {
       .no-print { display: none !important; }
@@ -461,6 +492,7 @@
       .gd-row-info { flex-basis: 100%; }
       .att-row-status { width: auto; }
       .dashboard-topbar { flex-wrap: wrap; gap: 10px; }
+      .att-pagination { gap: 10px; }
     }
   </style>
 

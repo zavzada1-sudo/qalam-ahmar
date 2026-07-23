@@ -108,6 +108,12 @@ const filterSelect   = document.getElementById("filterSelect");
 const studentsListEl = document.getElementById("studentsList");
 const listEmptyEl    = document.getElementById("listEmpty");
 
+// عناصر التنقل بين الصفحات (Pagination) — 🆕
+const paginationWrapper = document.getElementById("paginationWrapper");
+const prevPageBtn    = document.getElementById("prevPageBtn");
+const nextPageBtn    = document.getElementById("nextPageBtn");
+const pageInfoEl     = document.getElementById("pageInfo");
+
 const pickPrompt     = document.getElementById("pickPrompt");
 const printReportLink= document.getElementById("printReportLink");
 
@@ -125,6 +131,9 @@ let selectedDate     = todayStr();
 let groupStudents    = [];     // [{ uid, fullName, studentId }]
 let recordsMap       = new Map(); // studentUid → سجل الحضور
 let unsubscribeRecords = null;   // مرجع الاستماع الحالي لسجلات الحضور
+
+const PAGE_SIZE = 30;          // 🆕 عدد صفوف الطلبة في كل صفحة (Client-side Pagination)
+let currentPage = 1;           // 🆕 رقم الصفحة الحالية في قائمة الطلبة
 
 // ============================================
 // نقطة البداية
@@ -267,6 +276,8 @@ dateInput.addEventListener("change", async () => {
 // ============================================
 async function loadAttendanceView() {
   if (!selectedGroup) return;
+
+  currentPage = 1; // 🆕 نرجع لأول صفحة كل ما نغيّر المجموعة أو التاريخ
 
   pickPrompt.classList.add("hidden");
   sessionCard.classList.remove("hidden");
@@ -777,6 +788,7 @@ function renderList() {
     listEmptyEl.querySelector("h3").textContent = "المجموعة دي فاضية";
     listEmptyEl.querySelector("p").textContent =
       "مفيش طلبة في المجموعة دي لسه.";
+    paginationWrapper.classList.add("hidden"); // 🆕
     return;
   }
 
@@ -786,12 +798,25 @@ function renderList() {
     listEmptyEl.querySelector("h3").textContent = "مفيش طلبة مطابقين";
     listEmptyEl.querySelector("p").textContent =
       "جرّب تغيّر كلمة البحث أو الفلتر.";
+    paginationWrapper.classList.add("hidden"); // 🆕
     return;
   }
 
   listEmptyEl.classList.add("hidden");
 
-  studentsListEl.innerHTML = visible.map((row) => {
+  // ============================================
+  // 🆕 Pagination: نقسّم النتائج المفلترة لصفحات بحجم PAGE_SIZE
+  // ============================================
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+
+  // لو الصفحة الحالية بقت مش موجودة (مثلًا بعد فلترة ضيّقت النتائج) نرجعها لآخر صفحة صالحة
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = visible.slice(startIdx, startIdx + PAGE_SIZE);
+
+  studentsListEl.innerHTML = pageRows.map((row) => {
     const foreignNote = row.foreign
       ? `<span class="att-foreign-note">⚠ مش من المجموعة دي${
           row.otherGroups.length ? ` — مجموعته: ${escapeHtml(row.otherGroups.join("، "))}` : ""
@@ -827,7 +852,37 @@ function renderList() {
       </div>
     `;
   }).join("");
+
+  renderPagination(visible.length, totalPages); // 🆕
 }
+
+// ============================================
+// 🆕 عرض شريط التنقل بين الصفحات (Pagination)
+// ============================================
+function renderPagination(totalItems, totalPages) {
+  if (totalPages <= 1) {
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  paginationWrapper.classList.remove("hidden");
+  pageInfoEl.textContent = `صفحة ${currentPage} من ${totalPages} (${totalItems} طالب)`;
+  prevPageBtn.disabled = currentPage <= 1;
+  nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage <= 1) return;
+  currentPage--;
+  renderList();
+  listWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+nextPageBtn.addEventListener("click", () => {
+  currentPage++;
+  renderList();
+  listWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 // ============================================
 // الإحصائيات
@@ -938,8 +993,15 @@ async function removeRecord(uid) {
 // ============================================
 // البحث والفلترة
 // ============================================
-searchInput.addEventListener("input", renderList);
-filterSelect.addEventListener("change", renderList);
+searchInput.addEventListener("input", () => {
+  currentPage = 1; // 🆕 أي بحث جديد يرجعنا لأول صفحة
+  renderList();
+});
+
+filterSelect.addEventListener("change", () => {
+  currentPage = 1; // 🆕 أي فلتر جديد يرجعنا لأول صفحة
+  renderList();
+});
 
 // ============================================
 // رابط كشف الغياب
@@ -966,6 +1028,7 @@ function resetGroupView() {
   selectedGroup = null;
   groupStudents = [];
   recordsMap = new Map();
+  currentPage = 1; // 🆕
 
   sessionCard.classList.add("hidden");
   manualCard.classList.add("hidden");
@@ -974,6 +1037,7 @@ function resetGroupView() {
   pickPrompt.classList.remove("hidden");
 
   studentsListEl.innerHTML = "";
+  paginationWrapper.classList.add("hidden"); // 🆕
   updateReportLink();
 }
 
