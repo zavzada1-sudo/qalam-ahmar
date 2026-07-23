@@ -1155,10 +1155,8 @@ button { font-family: inherit; cursor: pointer; }
 .answer-key-item { display: inline-block; margin: 0 12px 8px 0; font-size: .9rem;
   background: var(--surface); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--orange); }
 
-/* إخفاء عناصر معينة وقت الطباعة الفعلية */
+/* باقي قواعد الطباعة المشتركة (no-print, body, @page) بقت في print.css المشترك */
 @media print {
-  .no-print { display: none !important; }
-  body { background: #fff; color: #000; }
   .print-page { padding: 0; max-width: 100%; }
   .print-question { break-inside: avoid; }
 }

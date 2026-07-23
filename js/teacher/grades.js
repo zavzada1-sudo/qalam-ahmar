@@ -35,6 +35,7 @@ const filterSelect   = document.getElementById("filterSelect");
 const studentsListEl = document.getElementById("studentsList");
 const listEmptyEl    = document.getElementById("listEmpty");
 const exportBtn      = document.getElementById("exportBtn");
+const printGradesLink = document.getElementById("printGradesLink");
 
 // عناصر التنقل بين الصفحات (Pagination) — 🆕
 const paginationWrapper = document.getElementById("paginationWrapper");
@@ -239,6 +240,7 @@ function renderHeader(exam) {
     `${exam.totalPoints || 0} درجة`,
     translateStatus(exam.status)
   ].join(" · ");
+  printGradesLink.href = `print-grades.html?examId=${examId}`;
 }
 
 function translateExamType(type) {

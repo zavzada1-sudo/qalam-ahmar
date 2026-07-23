@@ -29,16 +29,16 @@ const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 
-// عناصر التنقل بين الصفحات (Pagination) — 🆕
+// عناصر التنقل بين الصفحات (Pagination)
 const paginationWrapper = document.getElementById("paginationWrapper");
 const prevPageBtn = document.getElementById("prevPageBtn");
 const nextPageBtn = document.getElementById("nextPageBtn");
 const pageInfoEl = document.getElementById("pageInfo");
 
-let allExams = [];         // 🆕 كل امتحانات المدرس (بعد آخر تحديث من onSnapshot)
-let examsTeacherId = null; // 🆕 نحتفظ بالـ teacherId هنا عشان نستخدمه في أزرار الترقيم
-const PAGE_SIZE = 12;      // 🆕 عدد كروت الامتحانات في كل صفحة
-let currentPage = 1;       // 🆕 رقم الصفحة الحالية
+let allExams = [];
+let examsTeacherId = null;
+const PAGE_SIZE = 12;
+let currentPage = 1;
 
 // ------- فتح وقفل القائمة الجانبية على الموبايل -------
 function openSidebar() {
@@ -70,15 +70,11 @@ onAuthStateChanged(auth, async (user) => {
     const data = userDoc.data();
     const name = data.fullName || "مدرس";
 
-    // عرض الاسم وأول حرف منه في الصورة الرمزية
     teacherNameEl.textContent = name;
     teacherInitialEl.textContent = name.charAt(0);
 
      checkTeacherId(user.uid, data);
 
-
-    // تحميل الامتحانات والإحصائيات
-    // تحميل الامتحانات والإحصائيات
    loadTeacherExams(user.uid);
     await loadClassesAndStudentsCount(user.uid);
 
@@ -88,20 +84,15 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ------- جلب امتحانات المدرس + حساب الإحصائيات -------
-// مرجع للاستماع الحالي عشان نقدر نوقفه ونمنع تكراره
 let unsubscribeExams = null;
 
 function loadTeacherExams(teacherId) {
-  examsTeacherId = teacherId; // 🆕
+  examsTeacherId = teacherId;
 
   renderSkeleton(examsListEl, { type: "card", count: 3 });
 
   if (unsubscribeExams) unsubscribeExams();
 
-  // onSnapshot بدل getDocs: البيانات بتظهر فورًا من الكاش المحلي،
-  // والتحديث من السيرفر بييجي بعدها. وكمان أي امتحان جديد أو محذوف
-  // بيتحدّث في الشاشة لوحده من غير reload.
   unsubscribeExams = onSnapshot(
     query(collection(db, "exams"), where("teacherId", "==", teacherId)),
     (snapshot) => {
@@ -112,7 +103,7 @@ function loadTeacherExams(teacherId) {
         allExams.push({ id: examDoc.id, ...examDoc.data() });
       });
 
-      renderExamsPage(); // 🆕
+      renderExamsPage();
     },
     (error) => {
       console.error("Error loading exams:", error);
@@ -124,9 +115,6 @@ function loadTeacherExams(teacherId) {
   );
 }
 
-// ============================================
-// 🆕 عرض صفحة واحدة من الامتحانات (Client-side Pagination)
-// ============================================
 function renderExamsPage() {
   if (allExams.length === 0) {
     examsListEl.innerHTML = `
@@ -169,18 +157,15 @@ function renderExamsPage() {
   </div>
 `;
 
-    // فتح الامتحان للتعديل
     card.addEventListener("click", () => {
       window.location.href = `create-exam.html?examId=${exam.id}`;
     });
 
-    // حذف الامتحان (مع منع فتح صفحة التعديل)
     card.querySelector(".exam-delete-btn").addEventListener("click", async (e) => {
       e.stopPropagation();
       await deleteExam(exam.id, exam.title || "بدون عنوان", examsTeacherId);
     });
 
-    // زرار الطباعة (بيظهر بس لو الامتحان منشور)
     const printBtn = card.querySelector(".exam-print-btn");
     if (printBtn) {
       printBtn.addEventListener("click", (e) => {
@@ -189,7 +174,6 @@ function renderExamsPage() {
       });
     }
 
-    // زرار النتائج (بيظهر بس لو الامتحان منشور)
     const gradesBtn = card.querySelector(".exam-grades-btn");
     if (gradesBtn) {
       gradesBtn.addEventListener("click", (e) => {
@@ -201,12 +185,9 @@ function renderExamsPage() {
     examsListEl.appendChild(card);
   });
 
-  renderPagination(allExams.length, totalPages); // 🆕
+  renderPagination(allExams.length, totalPages);
 }
 
-// ============================================
-// 🆕 عرض شريط التنقل بين الصفحات
-// ============================================
 function renderPagination(totalItems, totalPages) {
   if (totalPages <= 1) {
     paginationWrapper.classList.add("hidden");
@@ -232,7 +213,6 @@ nextPageBtn.addEventListener("click", () => {
   examsListEl.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-// ------- حساب عدد الفصول (المجموعات) وعدد الطلاب الفريدين -------
 async function loadClassesAndStudentsCount(teacherId) {
   try {
     const groupsQuery = query(
@@ -241,11 +221,8 @@ async function loadClassesAndStudentsCount(teacherId) {
     );
     const snapshot = await getDocs(groupsQuery);
 
-    // عدد الفصول = عدد المجموعات
     classesCountEl.textContent = snapshot.size;
 
-    // عدد الطلاب = عدد الأكواد الفريدة (الطالب ممكن يكون في أكتر من مجموعة،
-    // فمش بنعدّه مرتين)
     const uniqueStudentIds = new Set();
     snapshot.forEach((groupDoc) => {
       const studentIds = groupDoc.data().studentIds || [];
@@ -261,9 +238,6 @@ async function loadClassesAndStudentsCount(teacherId) {
   }
 }
 
-
-
-// ------- ترجمة القيم لنصوص عربية -------
 function translateExamType(type) {
   const types = {
     exam: "امتحان",
@@ -283,7 +257,6 @@ function translateStatus(status) {
   return statuses[status] || status || "مسودة";
 }
 
-// ------- تسجيل الخروج -------
 logoutBtn.addEventListener("click", async () => {
   logoutBtn.disabled = true;
 
@@ -295,9 +268,8 @@ logoutBtn.addEventListener("click", async () => {
     logoutBtn.disabled = false;
   }
 });
-// ------- حذف امتحان -------
+
 async function deleteExam(examId, examTitle, teacherId) {
-  // نشوف الأول لو فيه طلاب سلّموا الامتحان ده
   let submissionsCount = 0;
   try {
     const subsSnap = await getDocs(query(
@@ -310,7 +282,6 @@ async function deleteExam(examId, examTitle, teacherId) {
     console.error("Check submissions error:", error);
   }
 
-  // رسالة تحذير حسب الحالة
   let confirmMessage = `متأكد إنك عايز تمسح "${examTitle}"؟ مش هتقدر ترجّعه تاني.`;
   if (submissionsCount > 0) {
     confirmMessage =
@@ -334,39 +305,28 @@ async function deleteExam(examId, examTitle, teacherId) {
   }
 }
 
-
-// ============================================
-// اختيار ID المدرس (أول مرة)
-// ============================================
-
 const teacherIdModal = document.getElementById("teacherIdModal");
 const teacherIdForm = document.getElementById("teacherIdForm");
 const teacherIdInput = document.getElementById("teacherIdInput");
 const saveIdBtn = document.getElementById("saveIdBtn");
 const teacherIdError = document.getElementById("teacherIdError");
 
-// متغير نحفظ فيه بيانات المدرس الحالي عشان نستخدمها
 let currentTeacherUid = null;
 
-// دالة نستدعيها بعد التأكد إن المستخدم مدرس
-// بتشوف: هل عنده teacherCode ولا لأ؟
 function checkTeacherId(uid, userData) {
   currentTeacherUid = uid;
 
-  // لو المدرس لسه مختارش ID → نظهر الشاشة
   if (!userData.teacherCode) {
     teacherIdModal.classList.remove("hidden");
   }
 }
 
-// عند حفظ الـ ID
 teacherIdForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   teacherIdError.textContent = "";
 
   const chosenId = teacherIdInput.value.trim();
 
-  // تحقق بسيط: مش فاضي وطوله معقول
   if (chosenId.length < 3) {
     teacherIdError.textContent = "الـ ID لازم يكون 3 حروف/أرقام على الأقل";
     return;
@@ -376,7 +336,6 @@ teacherIdForm.addEventListener("submit", async (e) => {
   saveIdBtn.textContent = "جاري الحفظ...";
 
   try {
-    // نتأكد إن الـ ID ده مش مستخدم من مدرس تاني
     const existingQuery = query(
       collection(db, "users"),
       where("teacherCode", "==", chosenId)
@@ -390,12 +349,10 @@ teacherIdForm.addEventListener("submit", async (e) => {
       return;
     }
 
-    // نحفظ الـ ID في حساب المدرس
     await updateDoc(doc(db, "users", currentTeacherUid), {
       teacherCode: chosenId
     });
 
-    // نخفي الشاشة
     teacherIdModal.classList.add("hidden");
 
   } catch (error) {
