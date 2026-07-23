@@ -34,6 +34,7 @@ import { showToast } from "../shared/ui.js";
 import { renderSkeleton } from "../shared/states.js";
 import { renderTrendChart } from "../shared/chart.js";
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 
 // ============================================

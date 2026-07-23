@@ -24,6 +24,7 @@ import { doc, getDoc, setDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const loadingEl     = document.getElementById("loadingState");

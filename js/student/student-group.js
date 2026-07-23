@@ -8,6 +8,8 @@ import { onAuthStateChanged, signOut }
 import { doc, getDoc, collection, query, where, onSnapshot }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
+import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");

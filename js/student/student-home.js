@@ -14,6 +14,7 @@ import { doc, getDoc, collection, query, where, onSnapshot }
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");

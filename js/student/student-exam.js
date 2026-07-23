@@ -10,6 +10,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc }
 import { showToast } from "../shared/ui.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const loadingView = document.getElementById("loadingView");

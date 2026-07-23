@@ -16,6 +16,7 @@ import {
 import { showToast } from "../shared/ui.js";
 import { renderTrendChart } from "../shared/chart.js";
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");

@@ -13,6 +13,7 @@ import { doc, getDoc, collection, query, where, getDocs }
 import { showToast } from "../shared/ui.js";
 
 import "../shared/theme.js";
+import "../shared/offline-banner.js";
 
 // ------- عناصر الصفحة -------
 const logoutBtn = document.getElementById("logoutBtn");
