@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, collection, query, where, getDocs, documentId }
+import { doc, getDoc, collection, query, where, getDocs, documentId, onSnapshot }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 
@@ -38,6 +38,9 @@ const exportBtn      = document.getElementById("exportBtn");
 // كل صفوف الطلاب بعد الدمج (نحتفظ بيها في الذاكرة للبحث والترتيب بدون إعادة تحميل)
 let allRows = [];
 let currentExam = null;
+
+// 🆕 إلغاء الاستماع اللحظي للتسليمات
+let unsubscribeSubmissions = null;
 
 // ------- لو مفيش examId في الرابط -------
 if (!examId) {
@@ -105,24 +108,17 @@ async function loadGrades(teacherId) {
     return;
   }
 
-  // ---- 3. جلب كل تسليمات الامتحان ----
-  // مهم: لازم نضيف شرط teacherId عشان الاستعلام يطابق قاعدة الأمان.
-  // Firestore بيرفض أي list query ما يقدرش يثبت مقدمًا إن نتايجه كلها مسموح بيها.
-  let subsSnap;
-  try {
-    subsSnap = await getDocs(query(
-      collection(db, "submissions"),
-      where("examId", "==", examId),
-      where("teacherId", "==", teacherId)
-    ));
-  } catch (error) {
-    console.error("[grades] فشل في قراءة submissions:", error.code, error.message);
-    showError("تعذر تحميل التسليمات، حاول تحديث الصفحة");
-    return;
-  }
+  // ---- 3. الاستماع اللحظي لتسليمات الامتحان ----
+  // 🆕 onSnapshot بدل getDocs: لو طالب سلّم دلوقتي وإنت فاتح الصفحة،
+  // هتشوفه يظهر فورًا من غير ما تعمل Refresh. الامتحان وقايمة الطلبة
+  // (فوق) فضلوا تحميل عادي لأنهم بيانات ثابتة أثناء الجلسة.
+  const submissionsQuery = query(
+    collection(db, "submissions"),
+    where("examId", "==", examId),
+    where("teacherId", "==", teacherId)
+  );
 
-  try {
-
+  unsubscribeSubmissions = onSnapshot(submissionsQuery, (subsSnap) => {
     // نحوّلهم لخريطة: studentId → بيانات التسليم (بحث سريع)
     const submissionsMap = new Map();
     subsSnap.forEach((subDoc) => {
@@ -149,11 +145,10 @@ async function loadGrades(teacherId) {
     renderList();
     showContent();
 
-  } catch (error) {
-    // ملاحظة مؤقتة: بتطبع كود الخطأ ورسالته كاملة عشان نحدد مصدر المشكلة بالظبط
-    console.error("Load grades error:", error.code, error.message, error);
-    showError("تعذر تحميل النتايج، حاول تحديث الصفحة");
-  }
+  }, (error) => {
+    console.error("[grades] فشل في قراءة submissions:", error.code, error.message);
+    showError("تعذر تحميل التسليمات، حاول تحديث الصفحة");
+  });
 }
 
 // ------- بناء صف طالب واحد -------
@@ -443,6 +438,11 @@ function showError(message) {
   errorTextEl.textContent = message;
   errorEl.classList.remove("hidden");
 }
+
+// ------- إلغاء الاستماع عند مغادرة الصفحة (توفير موارد) -------
+window.addEventListener("beforeunload", () => {
+  if (unsubscribeSubmissions) unsubscribeSubmissions();
+});
 
 // ------- أحداث البحث والفلتر والترتيب (تحديث فوري) -------
 searchInput.addEventListener("input", renderList);

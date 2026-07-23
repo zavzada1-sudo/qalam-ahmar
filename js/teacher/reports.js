@@ -229,21 +229,24 @@ async function loadGroupReport() {
   renderSkeleton(groupSummary, { type: "stat", count: 4 });
 
   try {
-    // ---- 1. الطلبة ----
-    groupStudents = await fetchUsersByIds(selectedGroup.studentIds || []);
+    // 🆕 نجيب الطلبة والامتحانات والحضور بالتوازي (Promise.all) —
+    // التلاتة دول مستقلين عن بعض تمامًا، مفيش داعي واحد يستنى التاني.
+    // التسليمات لوحدها بعدين لأنها محتاجة IDs الامتحانات الأول.
+    const [students, exams, attendanceData] = await Promise.all([
+      fetchUsersByIds(selectedGroup.studentIds || []),
+      fetchGroupExams(selectedGroup.id),
+      fetchAttendance(selectedGroup.id)
+    ]);
 
-    // ---- 2. امتحانات المجموعة ----
-    groupExams = await fetchGroupExams(selectedGroup.id);
-
-    // ---- 3. التسليمات ----
-    submissionsByStudent = await fetchSubmissions(groupExams.map((e) => e.id));
-
-    // ---- 4. الحضور ----
-    const attendanceData = await fetchAttendance(selectedGroup.id);
+    groupStudents = students;
+    groupExams = exams;
     attendanceByStudent = attendanceData.byStudent;
     sessionDates = attendanceData.dates;
 
-    // ---- 5. نحسب الصفوف ----
+    // ---- التسليمات (محتاجة IDs الامتحانات) ----
+    submissionsByStudent = await fetchSubmissions(groupExams.map((e) => e.id));
+
+    // ---- نحسب الصفوف ----
     reportRows = groupStudents.map((student) => buildStudentRow(student));
 
     renderGroupReport();
@@ -270,15 +273,23 @@ async function loadGroupReport() {
 async function fetchUsersByIds(ids) {
   if (!ids || ids.length === 0) return [];
 
-  const results = [];
-
+  // 🆕 نبني كل الدفعات (كل دفعة 10 IDs بحد أقصى، حد Firestore) ونطلقهم
+  // كلهم مع بعض بـ Promise.all بدل ما كل دفعة تستنى اللي قبلها
+  const chunks = [];
   for (let i = 0; i < ids.length; i += 10) {
-    const chunk = ids.slice(i, i + 10);
-    const snap = await getDocs(
-      query(collection(db, "users"), where(documentId(), "in", chunk))
-    );
-    snap.forEach((d) => results.push({ uid: d.id, ...d.data() }));
+    chunks.push(ids.slice(i, i + 10));
   }
+
+  const snaps = await Promise.all(
+    chunks.map((chunk) =>
+      getDocs(query(collection(db, "users"), where(documentId(), "in", chunk)))
+    )
+  );
+
+  const results = [];
+  snaps.forEach((snap) => {
+    snap.forEach((d) => results.push({ uid: d.id, ...d.data() }));
+  });
 
   results.sort((a, b) =>
     (a.fullName || "").localeCompare(b.fullName || "", "ar")
@@ -314,21 +325,30 @@ async function fetchSubmissions(examIds) {
 
   if (!examIds || examIds.length === 0) return map;
 
+  // 🆕 نفس فكرة fetchUsersByIds: كل دفعات الـ 10 examIds بيتطلقوا
+  // مع بعض بدل التتابع
+  const chunks = [];
   for (let i = 0; i < examIds.length; i += 10) {
-    const chunk = examIds.slice(i, i + 10);
+    chunks.push(examIds.slice(i, i + 10));
+  }
 
-    const snap = await getDocs(query(
-      collection(db, "submissions"),
-      where("teacherId", "==", currentTeacherId),  // لازم يطابق الـ Rules
-      where("examId", "in", chunk)
-    ));
+  const snaps = await Promise.all(
+    chunks.map((chunk) =>
+      getDocs(query(
+        collection(db, "submissions"),
+        where("teacherId", "==", currentTeacherId),  // لازم يطابق الـ Rules
+        where("examId", "in", chunk)
+      ))
+    )
+  );
 
+  snaps.forEach((snap) => {
     snap.forEach((d) => {
       const sub = { id: d.id, ...d.data() };
       if (!map.has(sub.studentId)) map.set(sub.studentId, []);
       map.get(sub.studentId).push(sub);
     });
-  }
+  });
 
   // ترتيب تسليمات كل طالب زمنيًا (الأقدم الأول)
   map.forEach((subs) => {

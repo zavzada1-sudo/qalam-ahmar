@@ -6,7 +6,7 @@ import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { doc, getDoc, collection, addDoc, deleteDoc, updateDoc,
-         query, where, getDocs, arrayUnion, arrayRemove }
+         query, where, onSnapshot, arrayUnion, arrayRemove }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 import { showToast, showConfirm } from "../shared/ui.js";
@@ -45,6 +45,10 @@ let selectedGradeId = null;
 let selectedGradeName = null;
 let modalMode = null; // "grade" أو "group"
 
+// 🆕 إلغاء الاستماع اللحظي
+let unsubscribeGrades = null;
+let unsubscribeGroups = null;
+
 // ------- القائمة الجانبية (موبايل) -------
 if (menuToggle) menuToggle.addEventListener("click", () => {
   sidebar.classList.add("open");
@@ -69,23 +73,24 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   currentTeacherId = user.uid;
-  await loadGrades();
+  listenToGrades();
 });
 
 // ============================================
 // المستوى 1: السنوات الدراسية
 // ============================================
 
-async function loadGrades() {
+// 🆕 استماع لحظي بدل تحميل مرة واحدة — أي سنة جديدة أو محذوفة بتتحدث
+// في القائمة تلقائيًا من غير Refresh
+function listenToGrades() {
   gradesList.innerHTML = `<p class="loading-text">جاري التحميل...</p>`;
 
-  try {
-    const gradesQuery = query(
-      collection(db, "grades"),
-      where("teacherId", "==", currentTeacherId)
-    );
-    const snapshot = await getDocs(gradesQuery);
+  const gradesQuery = query(
+    collection(db, "grades"),
+    where("teacherId", "==", currentTeacherId)
+  );
 
+  unsubscribeGrades = onSnapshot(gradesQuery, (snapshot) => {
     if (snapshot.empty) {
       gradesList.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
@@ -126,16 +131,16 @@ async function loadGrades() {
         if (!confirmed) return;
         await deleteDoc(doc(db, "grades", gradeDoc.id));
         showToast("تم حذف السنة الدراسية بنجاح", "success");
-        await loadGrades();
+        // مفيش داعي نعيد التحميل يدويًا — الـ Listener هيحدّث القائمة لوحده
       });
 
       gradesList.appendChild(card);
     });
 
-  } catch (error) {
+  }, (error) => {
     console.error("Load grades error:", error);
     gradesList.innerHTML = `<p class="message error">تعذر تحميل السنوات، حاول تحديث الصفحة</p>`;
-  }
+  });
 }
 
 // ============================================
@@ -159,26 +164,32 @@ async function openGroups(gradeId, gradeName) {
   `;
   document.getElementById("crumbBack").addEventListener("click", backToGrades);
 
-  await loadGroups();
+  listenToGroups();
 }
 
 function backToGrades() {
   groupsView.classList.add("hidden");
   gradesView.classList.remove("hidden");
   breadcrumb.innerHTML = `<span class="breadcrumb-item active">السنوات الدراسية</span>`;
+  // نلغي استماع المجموعات لأننا مش شايفينها دلوقتي (توفير موارد)
+  if (unsubscribeGroups) { unsubscribeGroups(); unsubscribeGroups = null; }
 }
 
-async function loadGroups() {
+// 🆕 استماع لحظي بدل تحميل مرة واحدة — لو طالب اتقبل من شاشة التفاصيل
+// مثلاً، عدد الطلبة على الكارت بيتحدث تلقائيًا من غير ما نعيد التحميل يدويًا
+function listenToGroups() {
   groupsList.innerHTML = `<p class="loading-text">جاري التحميل...</p>`;
 
-  try {
-    const groupsQuery = query(
-      collection(db, "groups"),
-      where("teacherId", "==", currentTeacherId),
-      where("gradeId", "==", selectedGradeId)
-    );
-    const snapshot = await getDocs(groupsQuery);
+  // لو كان فيه استماع سابق (لسنة تانية) نلغيه الأول
+  if (unsubscribeGroups) { unsubscribeGroups(); unsubscribeGroups = null; }
 
+  const groupsQuery = query(
+    collection(db, "groups"),
+    where("teacherId", "==", currentTeacherId),
+    where("gradeId", "==", selectedGradeId)
+  );
+
+  unsubscribeGroups = onSnapshot(groupsQuery, (snapshot) => {
     if (snapshot.empty) {
       groupsList.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
@@ -206,7 +217,7 @@ async function loadGroups() {
         <button class="entity-delete" title="حذف">🗑️</button>
       `;
 
-      // (لاحقًا) فتح تفاصيل المجموعة والطلاب
+      // فتح تفاصيل المجموعة والطلاب
       card.addEventListener("click", () => {
         openGroupDetail(groupDoc.id, group);
       });
@@ -222,16 +233,16 @@ async function loadGroups() {
         if (!confirmed) return;
         await deleteDoc(doc(db, "groups", groupDoc.id));
         showToast("تم حذف المجموعة بنجاح", "success");
-        await loadGroups();
+        // مفيش داعي نعيد التحميل يدويًا — الـ Listener هيحدّث القائمة لوحده
       });
 
       groupsList.appendChild(card);
     });
 
-  } catch (error) {
+  }, (error) => {
     console.error("Load groups error:", error);
     groupsList.innerHTML = `<p class="message error">تعذر تحميل المجموعات، حاول تحديث الصفحة</p>`;
-  }
+  });
 }
 
 // ============================================
@@ -278,7 +289,8 @@ addForm.addEventListener("submit", async (e) => {
         createdAt: new Date().toISOString()
       });
       closeModal();
-      await loadGrades();
+      // مفيش داعي نعيد التحميل يدويًا — استماع listenToGrades هيلقط
+      // السنة الجديدة تلقائيًا
     } else {
       await addDoc(collection(db, "groups"), {
         teacherId: currentTeacherId,
@@ -289,7 +301,7 @@ addForm.addEventListener("submit", async (e) => {
         createdAt: new Date().toISOString()
       });
       closeModal();
-      await loadGroups();
+      // نفس الكلام — listenToGroups هيلقط المجموعة الجديدة تلقائيًا
     }
   } catch (error) {
     console.error("Add error:", error);
@@ -300,10 +312,18 @@ addForm.addEventListener("submit", async (e) => {
   }
 });
 
+// ------- إلغاء كل الاستماعات (توفير موارد) -------
+function unsubscribeAll() {
+  if (unsubscribeGrades) unsubscribeGrades();
+  if (unsubscribeGroups) unsubscribeGroups();
+}
+window.addEventListener("beforeunload", unsubscribeAll);
+
 // ------- تسجيل الخروج -------
 logoutBtn.addEventListener("click", async () => {
   logoutBtn.disabled = true;
   try {
+    unsubscribeAll();
     await signOut(auth);
     window.location.href = "../index.html";
   } catch (error) {
@@ -416,11 +436,13 @@ async function openGroupDetail(groupId, groupData) {
   await renderGroupDetail();
 }
 
-// ------- إغلاق الشاشة + تحديث الكروت في الخلفية -------
+// ------- إغلاق الشاشة -------
+// مفيش داعي نعيد تحميل المجموعات يدويًا هنا — listenToGroups شغال أصلاً
+// في الخلفية وهيحدّث أرقام الطلبة/الطلبات على الكروت تلقائيًا لحظة ما
+// أي تعديل (قبول/رفض/إزالة) يتسجّل في قاعدة البيانات.
 function closeGroupDetail() {
   const modal = document.getElementById("groupDetailModal");
   if (modal) modal.classList.add("hidden");
-  loadGroups(); // عشان أرقام الطلبات/الطلاب على الكروت تتحدث
 }
 
 // ------- جلب بيانات الطلاب (اللي مش في الكاش) -------

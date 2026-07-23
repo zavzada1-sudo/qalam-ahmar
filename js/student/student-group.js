@@ -5,7 +5,7 @@
 import { auth, db } from "../../firebase-config.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { doc, getDoc, collection, query, where, getDocs }
+import { doc, getDoc, collection, query, where, onSnapshot }
   from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { renderSkeleton, renderErrorState } from "../shared/states.js";
 
@@ -33,6 +33,13 @@ const materialsTab = document.getElementById("materialsTab");
 // ------- الحالة -------
 let currentStudentId = null;
 let groupId = null;
+
+// 🆕 نتايج آخر Snapshot من كل Listener (بيتحدثوا مستقلين، وبنجمعهم وقت العرض)
+let latestExams = [];
+let latestSubsMap = new Map();
+let unsubscribeExams = null;
+let unsubscribeSubs = null;
+let unsubscribeMaterials = null;
 
 // أنواع تُحسب كامتحان
 const EXAM_TYPES = new Set(["exam", "quiz"]);
@@ -114,8 +121,8 @@ onAuthStateChanged(auth, async (user) => {
     groupSubtitle.textContent = `مع ${teacherName}`;
     crumbGroup.textContent = group.groupName;
 
-    await loadExamsAndAssignments();
-    await loadMaterials();
+    listenToExamsAndAssignments();
+    listenToMaterials();
 
   } catch (error) {
     console.error("Load group page error:", error);
@@ -129,59 +136,68 @@ function showFatalError(msg) {
 }
 
 // ============================================
-// جلب الامتحانات والواجبات
+// الاستماع اللحظي للامتحانات والواجبات
 // ============================================
+// 🆕 Listener مستقل لامتحانات المجموعة + Listener مستقل لتسليمات الطالب،
+// وكل ما أي واحد فيهم يتحدث بنعيد بناء العرض من آخر نسخة من الاتنين.
+// الفايدة: لو المدرس نشر امتحان جديد أو عدّله، الطالب يشوفه فورًا من
+// غير Refresh.
 
-async function loadExamsAndAssignments() {
-  try {
-    // 1) كل الامتحانات المنشورة المرتبطة بالمجموعة دي
-    const examsSnap = await getDocs(query(
-      collection(db, "exams"),
-      where("groupIds", "array-contains", groupId),
-      where("status", "==", "published")
-    ));
-
-    // 2) كل الـ submissions بتاعت الطالب (عشان نعرف حل ولا لأ)
-    const subsSnap = await getDocs(query(
-      collection(db, "submissions"),
-      where("studentId", "==", currentStudentId)
-    ));
-    const submittedExamIds = new Map(); // examId -> submission
-    subsSnap.forEach((s) => submittedExamIds.set(s.data().examId, s.data()));
-
-    // 3) نقسّم على تبويبين
-    const exams = [];
-    const assignments = [];
-    examsSnap.forEach((examDoc) => {
-      const exam = { id: examDoc.id, ...examDoc.data() };
-      const submission = submittedExamIds.get(examDoc.id) || null;
-
-      if (EXAM_TYPES.has(exam.type)) {
-        exams.push({ exam, submission });
-      } else if (ASSIGNMENT_TYPES.has(exam.type)) {
-        assignments.push({ exam, submission });
-      }
-    });
-
-    // ترتيب: الأحدث أول
-    const sortByCreatedAt = (a, b) => {
-      const da = new Date(a.exam.createdAt || 0).getTime();
-      const dbb = new Date(b.exam.createdAt || 0).getTime();
-      return dbb - da;
-    };
-    exams.sort(sortByCreatedAt);
-    assignments.sort(sortByCreatedAt);
-
-    examsTabCount.textContent = exams.length;
-    assignmentsTabCount.textContent = assignments.length;
-
-    renderList(examsList, exams, "امتحانات");
-    renderList(assignmentsList, assignments, "واجبات");
-
-  } catch (error) {
-    console.error("Load exams/assignments error:", error);
+function listenToExamsAndAssignments() {
+  const examsQuery = query(
+    collection(db, "exams"),
+    where("groupIds", "array-contains", groupId),
+    where("status", "==", "published")
+  );
+  unsubscribeExams = onSnapshot(examsQuery, (snap) => {
+    latestExams = [];
+    snap.forEach((examDoc) => latestExams.push({ id: examDoc.id, ...examDoc.data() }));
+    renderExamsAndAssignments();
+  }, (error) => {
+    console.error("Exams listener error:", error);
     showFatalError("تعذر تحميل الامتحانات، حدّث وحاول تاني");
-  }
+  });
+
+  const subsQuery = query(
+    collection(db, "submissions"),
+    where("studentId", "==", currentStudentId)
+  );
+  unsubscribeSubs = onSnapshot(subsQuery, (snap) => {
+    latestSubsMap = new Map();
+    snap.forEach((s) => latestSubsMap.set(s.data().examId, s.data()));
+    renderExamsAndAssignments();
+  }, (error) => {
+    console.error("Submissions listener error:", error);
+    // مش هنوقف عرض الامتحانات لو التسليمات فشلت، هيبانوا "لسه ما حلهاش" بس
+  });
+}
+
+function renderExamsAndAssignments() {
+  const exams = [];
+  const assignments = [];
+
+  latestExams.forEach((exam) => {
+    const submission = latestSubsMap.get(exam.id) || null;
+    if (EXAM_TYPES.has(exam.type)) {
+      exams.push({ exam, submission });
+    } else if (ASSIGNMENT_TYPES.has(exam.type)) {
+      assignments.push({ exam, submission });
+    }
+  });
+
+  const sortByCreatedAt = (a, b) => {
+    const da = new Date(a.exam.createdAt || 0).getTime();
+    const dbb = new Date(b.exam.createdAt || 0).getTime();
+    return dbb - da;
+  };
+  exams.sort(sortByCreatedAt);
+  assignments.sort(sortByCreatedAt);
+
+  examsTabCount.textContent = exams.length;
+  assignmentsTabCount.textContent = assignments.length;
+
+  renderList(examsList, exams, "امتحانات");
+  renderList(assignmentsList, assignments, "واجبات");
 }
 
 // ============================================
@@ -211,16 +227,15 @@ function buildCard(exam, submission) {
   const from = exam.availableFrom ? new Date(exam.availableFrom) : null;
   const to = exam.availableTo ? new Date(exam.availableTo) : null;
 
-  // تحديد الحالة
   let status;
   if (submission) {
-    status = "done"; // خلاص حله
+    status = "done";
   } else if (from && from > now) {
-    status = "notStarted"; // لسه ما بدأش
+    status = "notStarted";
   } else if (to && to < now) {
-    status = "closed"; // اتقفل
+    status = "closed";
   } else {
-    status = "available"; // متاح
+    status = "available";
   }
 
   const card = document.createElement("div");
@@ -280,13 +295,13 @@ function buildCard(exam, submission) {
 
 const MATERIAL_ICONS = { pdf: "📄", doc: "📝", video: "🎥", link: "🔗" };
 
-async function loadMaterials() {
-  try {
-    const snap = await getDocs(query(
-      collection(db, "materials"),
-      where("groupIds", "array-contains", groupId)
-    ));
+function listenToMaterials() {
+  const materialsQuery = query(
+    collection(db, "materials"),
+    where("groupIds", "array-contains", groupId)
+  );
 
+  unsubscribeMaterials = onSnapshot(materialsQuery, (snap) => {
     const materials = [];
     snap.forEach((m) => materials.push({ id: m.id, ...m.data() }));
     materials.sort((a, b) =>
@@ -320,16 +335,25 @@ async function loadMaterials() {
       materialsList.appendChild(card);
     });
 
-  } catch (error) {
-    console.error("Load materials error:", error);
+  }, (error) => {
+    console.error("Materials listener error:", error);
     materialsList.innerHTML = `<p class="message error">تعذر تحميل المواد</p>`;
-  }
+  });
 }
+
+// ------- إلغاء كل الاستماعات (توفير موارد) -------
+function unsubscribeAll() {
+  if (unsubscribeExams) unsubscribeExams();
+  if (unsubscribeSubs) unsubscribeSubs();
+  if (unsubscribeMaterials) unsubscribeMaterials();
+}
+window.addEventListener("beforeunload", unsubscribeAll);
 
 // ------- تسجيل الخروج -------
 logoutBtn.addEventListener("click", async () => {
   logoutBtn.disabled = true;
   try {
+    unsubscribeAll();
     await signOut(auth);
     window.location.href = "../index.html";
   } catch (error) {
