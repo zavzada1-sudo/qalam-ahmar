@@ -34,11 +34,21 @@ const materialError = document.getElementById("materialError");
 const saveMaterialBtn = document.getElementById("saveMaterialBtn");
 const cancelMaterialBtn = document.getElementById("cancelMaterialBtn");
 
+// عناصر التنقل بين الصفحات (Pagination) — 🆕
+const paginationWrapper = document.getElementById("paginationWrapper");
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageInfoEl = document.getElementById("pageInfo");
+
 // ------- الحالة -------
 let currentTeacherId = null;
 let editingMaterialId = null;      // null = إضافة جديدة
 let selectedGroupIds = new Set();
 let teacherGroups = [];            // [{id, groupName, gradeName, gradeId}]
+
+let allMaterials = [];   // 🆕 كل المواد (بعد آخر تحديث من onSnapshot)، قبل التقسيم لصفحات
+const PAGE_SIZE = 12;    // 🆕 عدد الكروت في كل صفحة
+let currentPage = 1;     // 🆕 رقم الصفحة الحالية
 
 const TYPE_ICONS = { pdf: "📄", doc: "📝", video: "🎥", link: "🔗" };
 const TYPE_NAMES = { pdf: "ملزمة / PDF", doc: "مستند Word", video: "فيديو", link: "رابط" };
@@ -207,31 +217,16 @@ function loadMaterials() {
       where("teacherId", "==", currentTeacherId)
     ),
     (snap) => {
-      const materials = [];
-      snap.forEach((m) => materials.push({ id: m.id, ...m.data() }));
+      allMaterials = [];
+      snap.forEach((m) => allMaterials.push({ id: m.id, ...m.data() }));
 
       // الأحدث أول
-      materials.sort((a, b) =>
+      allMaterials.sort((a, b) =>
         new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       );
 
-      materialsCount.textContent = materials.length;
-
-      if (materials.length === 0) {
-        materialsList.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
-            <div class="empty-icon">📚</div>
-            <h3>لسه مفيش مواد</h3>
-            <p>ضيف أول ملزمة أو ملف لطلابك.</p>
-          </div>
-        `;
-        return;
-      }
-
-      materialsList.innerHTML = "";
-      materials.forEach((material) => {
-        materialsList.appendChild(buildMaterialCard(material));
-      });
+      materialsCount.textContent = allMaterials.length;
+      renderMaterialsPage(); // 🆕
     },
     (error) => {
       console.error("Load materials error:", error);
@@ -239,6 +234,65 @@ function loadMaterials() {
     }
   );
 }
+
+// ============================================
+// 🆕 عرض صفحة واحدة من المواد (Client-side Pagination)
+// ============================================
+function renderMaterialsPage() {
+  if (allMaterials.length === 0) {
+    materialsList.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <div class="empty-icon">📚</div>
+        <h3>لسه مفيش مواد</h3>
+        <p>ضيف أول ملزمة أو ملف لطلابك.</p>
+      </div>
+    `;
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(allMaterials.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageMaterials = allMaterials.slice(startIdx, startIdx + PAGE_SIZE);
+
+  materialsList.innerHTML = "";
+  pageMaterials.forEach((material) => {
+    materialsList.appendChild(buildMaterialCard(material));
+  });
+
+  renderPagination(allMaterials.length, totalPages);
+}
+
+// ============================================
+// 🆕 عرض شريط التنقل بين الصفحات
+// ============================================
+function renderPagination(totalItems, totalPages) {
+  if (totalPages <= 1) {
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  paginationWrapper.classList.remove("hidden");
+  pageInfoEl.textContent = `صفحة ${currentPage} من ${totalPages} (${totalItems} مادة)`;
+  prevPageBtn.disabled = currentPage <= 1;
+  nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage <= 1) return;
+  currentPage--;
+  renderMaterialsPage();
+  materialsList.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+nextPageBtn.addEventListener("click", () => {
+  currentPage++;
+  renderMaterialsPage();
+  materialsList.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 function buildMaterialCard(material) {
   const groupNames = (material.groupIds || [])
@@ -280,7 +334,6 @@ function buildMaterialCard(material) {
     try {
       await deleteDoc(doc(db, "materials", material.id));
       showPageMessage("تم حذف المادة ✅", "success");
-      await loadMaterials();
     } catch (error) {
       console.error("Delete material error:", error);
       showPageMessage("حصلت مشكلة في الحذف، حاول تاني", "error");
@@ -373,7 +426,6 @@ saveMaterialBtn.addEventListener("click", async () => {
     }
 
     closeModal();
-    await loadMaterials();
 
   } catch (error) {
     console.error("Save material error:", error);

@@ -90,6 +90,13 @@
         <p class="loading-text">جاري التحميل...</p>
       </div>
 
+      <!-- ===== 🆕 التنقل بين الصفحات (Pagination) ===== -->
+      <div id="paginationWrapper" class="materials-pagination hidden">
+        <button id="prevPageBtn" class="btn btn-outline" type="button">السابق</button>
+        <span id="pageInfo" class="materials-page-info">صفحة 1 من 1</span>
+        <button id="nextPageBtn" class="btn btn-outline" type="button">التالي</button>
+      </div>
+
     </main>
   </div>
 
@@ -150,6 +157,35 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== 🆕 تنسيقات التنقل بين الصفحات ===== -->
+  <style>
+    .materials-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .materials-pagination .btn {
+      padding: 8px 18px;
+      font-size: .85rem;
+    }
+    .materials-pagination .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .materials-page-info {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+    @media (max-width: 640px) {
+      .materials-pagination { gap: 10px; }
+    }
+  </style>
 
   <script type="module" src="../js/teacher/materials.js"></script>
 

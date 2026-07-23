@@ -35,12 +35,21 @@ const studentsListEl = document.getElementById("studentsList");
 const listEmptyEl    = document.getElementById("listEmpty");
 const exportBtn      = document.getElementById("exportBtn");
 
+// عناصر التنقل بين الصفحات (Pagination) — 🆕
+const paginationWrapper = document.getElementById("paginationWrapper");
+const prevPageBtn    = document.getElementById("prevPageBtn");
+const nextPageBtn    = document.getElementById("nextPageBtn");
+const pageInfoEl     = document.getElementById("pageInfo");
+
 // كل صفوف الطلاب بعد الدمج (نحتفظ بيها في الذاكرة للبحث والترتيب بدون إعادة تحميل)
 let allRows = [];
 let currentExam = null;
 
 // 🆕 إلغاء الاستماع اللحظي للتسليمات
 let unsubscribeSubmissions = null;
+
+const PAGE_SIZE = 30;  // 🆕 عدد صفوف الطلبة في كل صفحة (Client-side Pagination)
+let currentPage = 1;   // 🆕 رقم الصفحة الحالية
 
 // ------- لو مفيش examId في الرابط -------
 if (!examId) {
@@ -278,19 +287,62 @@ function renderStats() {
 // عرض قائمة الطلاب (بحث + فلتر + ترتيب)
 // ============================================
 function renderList() {
-  const rows = getVisibleRows();
+  const rows = getVisibleRows(); // كل الصفوف المطابقة (مش مقسّمة لصفحات بعد)
 
   if (!rows.length) {
     studentsListEl.innerHTML = "";
     listEmptyEl.classList.remove("hidden");
+    paginationWrapper.classList.add("hidden"); // 🆕
     return;
   }
 
   listEmptyEl.classList.add("hidden");
-  studentsListEl.innerHTML = rows.map(buildRowHtml).join("");
+
+  // ============================================
+  // 🆕 Pagination: نقسّم *عرض الصفوف بس* — البحث/الفلتر/التصدير CSV
+  // بيفضلوا شغالين على "rows" كاملة (شوف getVisibleRows وexportBtn تحت)
+  // ============================================
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = rows.slice(startIdx, startIdx + PAGE_SIZE);
+
+  studentsListEl.innerHTML = pageRows.map(buildRowHtml).join("");
+
+  renderPagination(rows.length, totalPages); // 🆕
 }
 
-// تطبيق البحث والفلتر والترتيب على الصفوف
+// ============================================
+// 🆕 عرض شريط التنقل بين الصفحات (Pagination)
+// ============================================
+function renderPagination(totalItems, totalPages) {
+  if (totalPages <= 1) {
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  paginationWrapper.classList.remove("hidden");
+  pageInfoEl.textContent = `صفحة ${currentPage} من ${totalPages} (${totalItems} طالب)`;
+  prevPageBtn.disabled = currentPage <= 1;
+  nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage <= 1) return;
+  currentPage--;
+  renderList();
+  studentsListEl.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+nextPageBtn.addEventListener("click", () => {
+  currentPage++;
+  renderList();
+  studentsListEl.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// تطبيق البحث والفلتر والترتيب على الصفوف (القايمة الكاملة، بدون تقسيم صفحات)
 function getVisibleRows() {
   const term = searchInput.value.trim().toLowerCase();
   const filter = filterSelect.value;
@@ -381,6 +433,8 @@ function escapeHtml(text) {
 
 // ============================================
 // تصدير النتائج كملف CSV (يفتح في Excel)
+// ⚠️ بيصدّر كل النتائج المطابقة للبحث/الفلتر (كل الصفحات مع بعض)
+// مش بس اللي ظاهر في صفحة العرض الحالية
 // ============================================
 exportBtn.addEventListener("click", () => {
   const rows = getVisibleRows();
@@ -445,6 +499,15 @@ window.addEventListener("beforeunload", () => {
 });
 
 // ------- أحداث البحث والفلتر والترتيب (تحديث فوري) -------
-searchInput.addEventListener("input", renderList);
-sortSelect.addEventListener("change", renderList);
-filterSelect.addEventListener("change", renderList);
+searchInput.addEventListener("input", () => {
+  currentPage = 1; // 🆕 أي بحث جديد يرجعنا لأول صفحة
+  renderList();
+});
+sortSelect.addEventListener("change", () => {
+  currentPage = 1; // 🆕 أي ترتيب جديد يرجعنا لأول صفحة
+  renderList();
+});
+filterSelect.addEventListener("change", () => {
+  currentPage = 1; // 🆕 أي فلتر جديد يرجعنا لأول صفحة
+  renderList();
+});

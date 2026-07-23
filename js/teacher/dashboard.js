@@ -28,6 +28,17 @@ const menuToggle = document.getElementById("menuToggle");
 const sidebar = document.getElementById("sidebar");
 const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 
+// عناصر التنقل بين الصفحات (Pagination) — 🆕
+const paginationWrapper = document.getElementById("paginationWrapper");
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageInfoEl = document.getElementById("pageInfo");
+
+let allExams = [];         // 🆕 كل امتحانات المدرس (بعد آخر تحديث من onSnapshot)
+let examsTeacherId = null; // 🆕 نحتفظ بالـ teacherId هنا عشان نستخدمه في أزرار الترقيم
+const PAGE_SIZE = 12;      // 🆕 عدد كروت الامتحانات في كل صفحة
+let currentPage = 1;       // 🆕 رقم الصفحة الحالية
+
 // ------- فتح وقفل القائمة الجانبية على الموبايل -------
 function openSidebar() {
   sidebar.classList.add("open");
@@ -81,6 +92,8 @@ onAuthStateChanged(auth, async (user) => {
 let unsubscribeExams = null;
 
 function loadTeacherExams(teacherId) {
+  examsTeacherId = teacherId; // 🆕
+
   renderSkeleton(examsListEl, { type: "card", count: 3 });
 
   if (unsubscribeExams) unsubscribeExams();
@@ -93,25 +106,53 @@ function loadTeacherExams(teacherId) {
     (snapshot) => {
       assessmentsCountEl.textContent = snapshot.size;
 
-      if (snapshot.empty) {
-        examsListEl.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">📝</div>
-            <h3>لسه مفيش امتحانات</h3>
-            <p>ابدأ بإنشاء أول امتحان لطلابك.</p>
-            <a href="create-exam.html" class="btn btn-primary">+ إنشاء أول امتحان</a>
-          </div>
-        `;
-        return;
-      }
-
-      examsListEl.innerHTML = "";
+      allExams = [];
       snapshot.forEach((examDoc) => {
-        const exam = examDoc.data();
-        const card = document.createElement("div");
-        card.className = "exam-card";
-        card.style.cursor = "pointer";
-        card.innerHTML = `
+        allExams.push({ id: examDoc.id, ...examDoc.data() });
+      });
+
+      renderExamsPage(); // 🆕
+    },
+    (error) => {
+      console.error("Error loading exams:", error);
+      renderErrorState(examsListEl, {
+        message: "تعذر تحميل الامتحانات، حاول تحديث الصفحة",
+        onRetry: () => loadTeacherExams(teacherId),
+      });
+    }
+  );
+}
+
+// ============================================
+// 🆕 عرض صفحة واحدة من الامتحانات (Client-side Pagination)
+// ============================================
+function renderExamsPage() {
+  if (allExams.length === 0) {
+    examsListEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>لسه مفيش امتحانات</h3>
+        <p>ابدأ بإنشاء أول امتحان لطلابك.</p>
+        <a href="create-exam.html" class="btn btn-primary">+ إنشاء أول امتحان</a>
+      </div>
+    `;
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(allExams.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageExams = allExams.slice(startIdx, startIdx + PAGE_SIZE);
+
+  examsListEl.innerHTML = "";
+  pageExams.forEach((exam) => {
+    const card = document.createElement("div");
+    card.className = "exam-card";
+    card.style.cursor = "pointer";
+    card.innerHTML = `
   <div class="exam-card-actions">
     ${exam.status === "published"
       ? `<button class="exam-grades-btn" title="عرض النتائج">📊</button>
@@ -127,47 +168,68 @@ function loadTeacherExams(teacherId) {
   </div>
 `;
 
-        // فتح الامتحان للتعديل
-        card.addEventListener("click", () => {
-          window.location.href = `create-exam.html?examId=${examDoc.id}`;
-        });
+    // فتح الامتحان للتعديل
+    card.addEventListener("click", () => {
+      window.location.href = `create-exam.html?examId=${exam.id}`;
+    });
 
-        // حذف الامتحان (مع منع فتح صفحة التعديل)
-        card.querySelector(".exam-delete-btn").addEventListener("click", async (e) => {
-          e.stopPropagation();
-          await deleteExam(examDoc.id, exam.title || "بدون عنوان", teacherId);
-        });
+    // حذف الامتحان (مع منع فتح صفحة التعديل)
+    card.querySelector(".exam-delete-btn").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await deleteExam(exam.id, exam.title || "بدون عنوان", examsTeacherId);
+    });
 
-        // زرار الطباعة (بيظهر بس لو الامتحان منشور)
-        const printBtn = card.querySelector(".exam-print-btn");
-        if (printBtn) {
-          printBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            window.open(`print-exam.html?examId=${examDoc.id}`, "_blank");
-          });
-        }
-
-        // زرار النتائج (بيظهر بس لو الامتحان منشور)
-        const gradesBtn = card.querySelector(".exam-grades-btn");
-        if (gradesBtn) {
-          gradesBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            window.location.href = `grades.html?examId=${examDoc.id}`;
-          });
-        }
-
-        examsListEl.appendChild(card);
-      });
-    },
-    (error) => {
-      console.error("Error loading exams:", error);
-      renderErrorState(examsListEl, {
-        message: "تعذر تحميل الامتحانات، حاول تحديث الصفحة",
-        onRetry: () => loadTeacherExams(teacherId),
+    // زرار الطباعة (بيظهر بس لو الامتحان منشور)
+    const printBtn = card.querySelector(".exam-print-btn");
+    if (printBtn) {
+      printBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.open(`print-exam.html?examId=${exam.id}`, "_blank");
       });
     }
-  );
+
+    // زرار النتائج (بيظهر بس لو الامتحان منشور)
+    const gradesBtn = card.querySelector(".exam-grades-btn");
+    if (gradesBtn) {
+      gradesBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.location.href = `grades.html?examId=${exam.id}`;
+      });
+    }
+
+    examsListEl.appendChild(card);
+  });
+
+  renderPagination(allExams.length, totalPages); // 🆕
 }
+
+// ============================================
+// 🆕 عرض شريط التنقل بين الصفحات
+// ============================================
+function renderPagination(totalItems, totalPages) {
+  if (totalPages <= 1) {
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  paginationWrapper.classList.remove("hidden");
+  pageInfoEl.textContent = `صفحة ${currentPage} من ${totalPages} (${totalItems} امتحان)`;
+  prevPageBtn.disabled = currentPage <= 1;
+  nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage <= 1) return;
+  currentPage--;
+  renderExamsPage();
+  examsListEl.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+nextPageBtn.addEventListener("click", () => {
+  currentPage++;
+  renderExamsPage();
+  examsListEl.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 // ------- حساب عدد الفصول (المجموعات) وعدد الطلاب الفريدين -------
 async function loadClassesAndStudentsCount(teacherId) {
@@ -265,7 +327,6 @@ async function deleteExam(examId, examTitle, teacherId) {
   try {
     await deleteDoc(doc(db, "exams", examId));
     showToast("تم حذف الامتحان بنجاح", "success");
-    await loadTeacherExams(teacherId); // نعيد تحميل القايمة
   } catch (error) {
     console.error("Delete exam error:", error);
     showToast("حصلت مشكلة في الحذف، حاول تاني", "error");

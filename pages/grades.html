@@ -127,6 +127,13 @@
         <p>جرّب تغيّر كلمة البحث أو الفلتر.</p>
       </div>
 
+      <!-- ===== 🆕 التنقل بين الصفحات (Pagination) ===== -->
+      <div id="paginationWrapper" class="grades-pagination hidden">
+        <button id="prevPageBtn" class="btn btn-outline" type="button">السابق</button>
+        <span id="pageInfo" class="grades-page-info">صفحة 1 من 1</span>
+        <button id="nextPageBtn" class="btn btn-outline" type="button">التالي</button>
+      </div>
+
     </div>
   </div>
 
@@ -246,6 +253,30 @@
     .grade-score.fail { color: var(--primary); }
     .grade-score-empty { color: var(--text-light); }
 
+    /* ---------- 🆕 التنقل بين الصفحات ---------- */
+    .grades-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .grades-pagination .btn {
+      padding: 8px 18px;
+      font-size: .85rem;
+    }
+    .grades-pagination .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .grades-page-info {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+
     /* تجاوب الموبايل: نخفي عناوين الأعمدة ونخلي الصف يلف */
     @media (max-width: 640px) {
       .grades-columns { display: none; }
@@ -255,6 +286,7 @@
       .grade-row-score,
       .grade-row-time { width: auto; }
       .grade-row-time { margin-inline-start: auto; }
+      .grades-pagination { gap: 10px; }
     }
   </style>
 

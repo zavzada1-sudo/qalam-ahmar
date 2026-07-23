@@ -159,10 +159,46 @@
         <div id="examsList" class="exams-grid">
           <p class="loading-text">جاري تحميل الامتحانات...</p>
         </div>
+
+        <!-- ===== 🆕 التنقل بين الصفحات (Pagination) ===== -->
+        <div id="paginationWrapper" class="dashboard-pagination hidden">
+          <button id="prevPageBtn" class="btn btn-outline" type="button">السابق</button>
+          <span id="pageInfo" class="dashboard-page-info">صفحة 1 من 1</span>
+          <button id="nextPageBtn" class="btn btn-outline" type="button">التالي</button>
+        </div>
       </section>
 
     </main>
   </div>
+
+  <!-- ===== 🆕 تنسيقات التنقل بين الصفحات ===== -->
+  <style>
+    .dashboard-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .dashboard-pagination .btn {
+      padding: 8px 18px;
+      font-size: .85rem;
+    }
+    .dashboard-pagination .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .dashboard-page-info {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+    @media (max-width: 640px) {
+      .dashboard-pagination { gap: 10px; }
+    }
+  </style>
 
   <script type="module" src="../js/teacher/dashboard.js"></script>
 
