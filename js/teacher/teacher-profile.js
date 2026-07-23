@@ -37,12 +37,21 @@ const paymentActionsBar = document.getElementById("paymentActionsBar");
 const setPaymentBtn = document.getElementById("setPaymentBtn");
 const clearPaymentBtn = document.getElementById("clearPaymentBtn");
 
+// عناصر التنقل بين الصفحات (Pagination) — 🆕
+const paginationWrapper = document.getElementById("paginationWrapper");
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageInfoEl = document.getElementById("pageInfo");
+
 // ------- متغيرات الحالة -------
 let currentTeacherId = null;
 let allStudents = [];            // كل طلاب المدرس [{uid, fullName, studentId, email}]
 let studentSearchTerm = "";
 let paymentsByStudent = new Map(); // studentUid -> بيانات موعد الدفع
 let selectedStudents = new Set();  // uids المحددين حاليًا (Checkbox)
+
+const PAGE_SIZE = 30;   // 🆕 عدد الطلبة المعروضين في كل صفحة (Client-side Pagination)
+let currentPage = 1;    // 🆕 رقم الصفحة الحالية
 
 // ------- القائمة الجانبية (موبايل) -------
 if (menuToggle) menuToggle.addEventListener("click", () => {
@@ -186,6 +195,8 @@ async function loadStudents() {
 }
 
 // القايمة الظاهرة حاليًا بعد فلترة البحث (مستخدمة في أكتر من مكان)
+// ⚠️ دي القايمة المفلترة بالكامل (كل الصفحات مع بعض) — مش بس صفحة العرض الحالية
+// لازم تفضل كده عشان "تحديد الكل" والـ Batch Write يشتغلوا على كل النتائج المطابقة
 function getVisibleStudents() {
   const term = studentSearchTerm.toLowerCase();
   return allStudents.filter((s) =>
@@ -203,26 +214,40 @@ function renderStudents() {
     studentsList.innerHTML = `<p class="gd-empty">لسه مفيش طلاب منضمّين لمجموعاتك</p>`;
     selectAllCheckbox.checked = false;
     selectAllCheckbox.indeterminate = false;
+    paginationWrapper.classList.add("hidden"); // 🆕
     return;
   }
 
+  // القايمة المفلترة بالكامل (بتُستخدم في تحديد الكل والـ Batch Write)
   const visible = getVisibleStudents();
 
   if (visible.length === 0) {
     studentsList.innerHTML = `<p class="gd-empty">مفيش نتيجة للبحث</p>`;
     selectAllCheckbox.checked = false;
     selectAllCheckbox.indeterminate = false;
+    paginationWrapper.classList.add("hidden"); // 🆕
     return;
   }
 
-  // تحديث حالة "تحديد الكل" بناءً على القايمة الظاهرة حاليًا بس
+  // تحديث حالة "تحديد الكل" بناءً على *كل* القايمة المفلترة (مش بس الصفحة الحالية)
   const allVisibleSelected = visible.every((s) => selectedStudents.has(s.uid));
   const someVisibleSelected = visible.some((s) => selectedStudents.has(s.uid));
   selectAllCheckbox.checked = allVisibleSelected;
   selectAllCheckbox.indeterminate = !allVisibleSelected && someVisibleSelected;
 
+  // ============================================
+  // 🆕 Pagination: نقسّم *عرض الصفوف بس* لصفحات — منطق التحديد فوق فضل شغال على "visible" كاملة
+  // ============================================
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageStudents = visible.slice(startIdx, startIdx + PAGE_SIZE);
+
   studentsList.innerHTML = "";
-  visible.forEach((s) => {
+  pageStudents.forEach((s) => {
     const row = document.createElement("div");
     row.className = "gd-row";
 
@@ -279,6 +304,7 @@ function renderStudents() {
       updateSelectionUI();
 
       // نحدّث حالة "تحديد الكل" من غير ما نعيد رسم القايمة كلها
+      // (بناءً على كل القايمة المفلترة، مش بس الصفحة الحالية)
       const stillVisible = getVisibleStudents();
       const allSel = stillVisible.every((st) => selectedStudents.has(st.uid));
       const someSel = stillVisible.some((st) => selectedStudents.has(st.uid));
@@ -288,11 +314,42 @@ function renderStudents() {
 
     studentsList.appendChild(row);
   });
+
+  renderPagination(visible.length, totalPages); // 🆕
 }
+
+// ============================================
+// 🆕 عرض شريط التنقل بين الصفحات (Pagination)
+// ============================================
+function renderPagination(totalItems, totalPages) {
+  if (totalPages <= 1) {
+    paginationWrapper.classList.add("hidden");
+    return;
+  }
+
+  paginationWrapper.classList.remove("hidden");
+  pageInfoEl.textContent = `صفحة ${currentPage} من ${totalPages} (${totalItems} طالب)`;
+  prevPageBtn.disabled = currentPage <= 1;
+  nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage <= 1) return;
+  currentPage--;
+  renderStudents();
+  studentsList.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+nextPageBtn.addEventListener("click", () => {
+  currentPage++;
+  renderStudents();
+  studentsList.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 // ------- البحث -------
 studentSearch.addEventListener("input", (e) => {
   studentSearchTerm = e.target.value.trim();
+  currentPage = 1; // 🆕 أي بحث جديد يرجعنا لأول صفحة
   renderStudents();
 });
 
@@ -414,7 +471,7 @@ function clearSelection() {
   renderStudents();
 }
 
-// ------- تحديد الكل (بالنسبة للقايمة الظاهرة حاليًا بس) -------
+// ------- تحديد الكل (بالنسبة لكل القايمة المفلترة بالبحث — مش بس الصفحة الحالية) -------
 selectAllCheckbox.addEventListener("change", () => {
   const visible = getVisibleStudents();
   if (selectAllCheckbox.checked) {

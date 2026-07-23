@@ -142,6 +142,13 @@
         <div id="studentsList" class="gd-list">
           <p class="loading-text">جاري التحميل...</p>
         </div>
+
+        <!-- ===== 🆕 التنقل بين الصفحات (Pagination) ===== -->
+        <div id="paginationWrapper" class="pm-pagination hidden">
+          <button id="prevPageBtn" class="btn btn-outline" type="button">السابق</button>
+          <span id="pageInfo" class="pm-page-info">صفحة 1 من 1</span>
+          <button id="nextPageBtn" class="btn btn-outline" type="button">التالي</button>
+        </div>
       </section>
 
     </main>
@@ -245,8 +252,33 @@
       margin-top: 8px;
     }
 
+    /* ---------- 🆕 التنقل بين الصفحات ---------- */
+    .pm-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .pm-pagination .btn {
+      padding: 8px 18px;
+      font-size: .85rem;
+    }
+    .pm-pagination .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .pm-page-info {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+
     @media (max-width: 640px) {
       .pm-select-bar { flex-direction: column; align-items: flex-start; }
+      .pm-pagination { gap: 10px; }
     }
   </style>
 
