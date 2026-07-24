@@ -251,7 +251,7 @@ function renderResults(exam, submission) {
   reviewList.innerHTML = "";
   questions.forEach((q, i) => {
     const card = q.type === "essay"
-      ? buildEssayReviewCard(q, answers[i], i)
+      ? buildEssayReviewCard(q, answers[i], i, submission.essayGrades)
       : buildMcqReviewCard(q, answers[i], i, labelStyle);
     reviewList.appendChild(card);
   });
@@ -314,15 +314,26 @@ function buildMcqReviewCard(q, answer, i, labelStyle) {
 }
 
 // ------- كارت مراجعة سؤال مقالي -------
-// ملحوظة: مفيش تصحيح هنا خالص — بس بنعرض إجابة الطالب زي ما هي.
-// التعليق والمصدر ومقارنة الإجابة النموذجية بيحصلوا بعد التصحيح (يدوي أو AI) في مرحلة تانية.
-function buildEssayReviewCard(q, answer, i) {
+// بيفحص essayGrades عشان يعرف لو المدرس صحّح السؤال ده فعلاً وحطله درجة
+function buildEssayReviewCard(q, answer, i, essayGrades) {
   const hasTextAnswer = Boolean(answer?.textAnswer);
   const hasImageAnswer = Boolean(answer?.imageUrl);
   const isUnanswered = !hasTextAnswer && !hasImageAnswer;
 
-  const statusClass = isUnanswered ? "unanswered" : "pending";
-  const statusLabel = isUnanswered ? "➖ مش متجاوب" : "⏳ قيد المراجعة";
+  const grade = (essayGrades || []).find((g) => g.questionIndex === i);
+  const isGraded = grade && typeof grade.score === "number";
+
+  let statusClass, statusLabel;
+  if (isGraded) {
+    statusClass = "correct";
+    statusLabel = `✔ الدرجة: ${grade.score} من ${q.points}`;
+  } else if (isUnanswered) {
+    statusClass = "unanswered";
+    statusLabel = "➖ مش متجاوب";
+  } else {
+    statusClass = "pending";
+    statusLabel = "⏳ قيد المراجعة";
+  }
 
   const card = document.createElement("div");
   card.className = `review-card ${statusClass}`;
@@ -337,6 +348,12 @@ function buildEssayReviewCard(q, answer, i) {
     ${hasTextAnswer ? `<div class="review-essay-answer">${escapeHtml(answer.textAnswer)}</div>` : ""}
     ${hasImageAnswer ? `<img class="review-image" src="${escapeHtml(answer.imageUrl)}" alt="صورة إجابتك">` : ""}
     ${isUnanswered ? `<p class="review-essay-answer">لم تتم الإجابة على هذا السؤال</p>` : ""}
+
+    ${isGraded && grade.feedback ? `
+      <div class="review-comment">
+        <strong>💬 ملاحظة المدرس:</strong> ${escapeHtml(grade.feedback)}
+      </div>
+    ` : ""}
   `;
   return card;
 }
