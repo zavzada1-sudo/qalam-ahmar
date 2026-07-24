@@ -169,8 +169,11 @@ function buildRow(studentId, fullName, studentCode, sub, exam) {
     fullName: fullName || "بدون اسم",
     studentCode: studentCode || "—",
     submitted: Boolean(sub),
-    // الحالات: not_submitted / queued / graded
+    // الحالات: not_submitted / queued / pending_review / graded
     status: sub ? (sub.status || "graded") : "not_submitted",
+    // 🆕 درجة الجزء الاختياري (بتتعرض لو المقالي لسه ما اتصححش)
+    mcqScore: sub ? (sub.mcqScore ?? null) : null,
+    mcqTotalPoints: sub ? (sub.mcqTotalPoints ?? null) : null,
     score: sub ? (sub.score ?? 0) : null,
     totalPoints: sub ? (sub.totalPoints ?? exam.totalPoints ?? 0) : (exam.totalPoints ?? 0),
     percentage: sub && typeof sub.percentage === "number" ? sub.percentage : null,
@@ -387,6 +390,13 @@ function buildRowHtml(row) {
   } else if (row.status === "queued") {
     badge = `<span class="grade-badge queued">قيد التصحيح</span>`;
     score = `<span class="grade-score-empty">—</span>`;
+  } else if (row.status === "pending_review") {
+    // 🆕 فيه أسئلة مقالية لسه محتاجة تصحيح من المدرس
+    badge = `<span class="grade-badge pending">محتاج مراجعة</span>`;
+    // نعرض درجة الاختياري بس كمؤشر مؤقت (مش الدرجة النهائية)
+    score = row.mcqScore !== null
+      ? `<span class="grade-score-partial">${row.mcqScore}/${row.mcqTotalPoints ?? "؟"} <small>اختياري</small></span>`
+      : `<span class="grade-score-empty">—</span>`;
   } else {
     badge = `<span class="grade-badge graded">تم التصحيح</span>`;
     const pct = row.percentage !== null ? Math.round(row.percentage) : 0;
@@ -400,8 +410,15 @@ function buildRowHtml(row) {
     ? `<span class="grade-badge former" title="سلّم الامتحان لكن مش في المجموعة دلوقتي">خارج المجموعة</span>`
     : "";
 
+  // 🆕 الصف بيبقى قابل للضغط بس لو الطالب سلّم فعلاً
+  // (اللي ما سلّمش مفيش عنده تسليم نراجعه، فمنخليهوش يدوس على الفاضي)
+  const clickableClass = row.submitted ? " grade-row-clickable" : "";
+  const clickableAttrs = row.submitted
+    ? ` data-student-id="${escapeHtml(row.studentId)}" role="button" tabindex="0" title="اضغط لمراجعة إجابات الطالب"`
+    : "";
+
   return `
-    <div class="gd-row grade-row">
+    <div class="gd-row grade-row${clickableClass}"${clickableAttrs}>
       <div class="gd-row-info">
         <div class="gd-row-name">${escapeHtml(row.fullName)} ${formerTag}</div>
         <div class="gd-row-code">كود الطالب: ${escapeHtml(String(row.studentCode))}</div>
@@ -411,6 +428,31 @@ function buildRowHtml(row) {
       <div class="grade-row-time">${row.timeSpent ? formatDuration(row.timeSpent) : "—"}</div>
     </div>
   `;
+}
+
+// ============================================
+// 🆕 الضغط على صف طالب → صفحة مراجعة إجاباته
+// بنستخدم Event Delegation على الحاوية بدل ما نربط listener لكل صف،
+// عشان الصفوف بتتعاد كتابتها بالكامل مع كل onSnapshot/بحث/تغيير صفحة
+// ============================================
+studentsListEl.addEventListener("click", (e) => {
+  const rowEl = e.target.closest(".grade-row-clickable");
+  if (!rowEl) return;
+  openSubmissionReview(rowEl.dataset.studentId);
+});
+
+// دعم لوحة المفاتيح (Enter / Space) لإمكانية الوصول
+studentsListEl.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const rowEl = e.target.closest(".grade-row-clickable");
+  if (!rowEl) return;
+  e.preventDefault();
+  openSubmissionReview(rowEl.dataset.studentId);
+});
+
+function openSubmissionReview(studentId) {
+  if (!studentId) return;
+  window.location.href = `submission-review.html?examId=${encodeURIComponent(examId)}&studentId=${encodeURIComponent(studentId)}`;
 }
 
 // لون الدرجة حسب النسبة (أخضر / برتقالي / أحمر)

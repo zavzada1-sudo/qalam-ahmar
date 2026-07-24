@@ -235,6 +235,7 @@
     }
     .grade-badge.graded  { background: var(--green-light);  color: var(--green); }
     .grade-badge.queued  { background: var(--orange-light); color: var(--orange); }
+    .grade-badge.pending { background: var(--purple-light); color: var(--purple); }
     .grade-badge.missing { background: #f0f0f0;             color: #888; }
     .grade-badge.former  {
       background: var(--purple-light);
@@ -260,6 +261,33 @@
     .grade-score.mid  { color: var(--orange); }
     .grade-score.fail { color: var(--primary); }
     .grade-score-empty { color: var(--text-light); }
+
+    /* 🆕 درجة جزئية (الاختياري بس) لما المقالي لسه محتاج مراجعة */
+    .grade-score-partial {
+      font-weight: 700;
+      font-size: .95rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .grade-score-partial small {
+      font-size: .72rem;
+      font-weight: 600;
+      opacity: .8;
+      margin-inline-start: 3px;
+    }
+
+    /* 🆕 صف قابل للضغط (بس اللي سلّم) → صفحة مراجعة التسليم */
+    .grade-row-clickable {
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    .grade-row-clickable:hover {
+      background: var(--bg-subtle);
+    }
+    .grade-row-clickable:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
 
     /* ---------- 🆕 التنقل بين الصفحات ---------- */
     .grades-pagination {
