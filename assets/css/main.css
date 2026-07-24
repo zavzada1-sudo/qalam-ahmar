@@ -1032,6 +1032,33 @@ button { font-family: inherit; cursor: pointer; }
 .exam-option-text { flex: 1; font-size: .95rem; }
 
 .exam-bottom-submit { margin-top: 20px; }
+.exam-bottom-submit { margin-top: 20px; }
+
+/* شارة "مقالي" جنب رقم السؤال */
+.exam-question-type { background: var(--bg-subtle); color: var(--text-muted);
+  padding: 4px 12px; border-radius: 20px; font-size: .8rem; font-weight: 600; margin-inline-start: 8px; }
+
+/* إجابة السؤال المقالي (نص + صورة) */
+.essay-answer { display: flex; flex-direction: column; gap: 10px; }
+.essay-hint { font-size: .85rem; color: var(--text-light); margin: 0; }
+.essay-text { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: .95rem; font-family: inherit; width: 100%; box-sizing: border-box;
+  background: var(--surface); color: var(--text); resize: vertical; }
+.essay-text:focus { outline: none; border-color: var(--primary); }
+.essay-text:disabled { background: var(--bg-subtle); color: var(--text-light); cursor: not-allowed; }
+
+.essay-image-area { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.essay-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px;
+  border: 1px dashed var(--border); border-radius: 8px; cursor: pointer; font-size: .9rem;
+  color: var(--text-muted); transition: border-color .15s;
+}
+.essay-upload-btn:hover { border-color: var(--primary); }
+.essay-upload-btn.disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.essay-image-preview { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.essay-image-preview img { max-width: 160px; max-height: 120px; border-radius: 8px;
+  border: 1px solid var(--border); object-fit: cover; }
+.essay-uploading { font-size: .85rem; color: var(--text-light); }
 
 /* مودال الوقت خلص */
 .time-up-icon { font-size: 3rem; text-align: center; margin-bottom: 10px; }

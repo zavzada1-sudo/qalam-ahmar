@@ -239,6 +239,7 @@ async function loadExamForEditing() {
 
     questions = (exam.questions || []).map((q) => ({
       qid: ++qidCounter,
+      type: q.type || "mcq", // امتحانات قديمة من غير type = اختيار من متعدد افتراضيًا
       questionText: q.questionText || "",
       imageUrl: q.imageUrl || "",
       imageUploading: false,
@@ -246,7 +247,8 @@ async function loadExamForEditing() {
       correctAnswerIndex: q.correctAnswerIndex || 0,
       points: q.points ?? 1,
       teacherComment: q.teacherComment || "",
-      resourceUrl: q.resourceUrl || ""
+      resourceUrl: q.resourceUrl || "",
+      modelAnswer: q.modelAnswer || ""
     }));
 
     renderAllQuestions();
@@ -399,6 +401,7 @@ examLabelStyleInput.addEventListener("change", () => {
 function addQuestion() {
   questions.push({
     qid: ++qidCounter,
+    type: "mcq", // النوع الافتراضي — المدرس يقدر يغيّره من القائمة المنسدلة
     questionText: "",
     imageUrl: "",
     imageUploading: false,
@@ -406,7 +409,8 @@ function addQuestion() {
     correctAnswerIndex: 0,
     points: 1,
     teacherComment: "",
-    resourceUrl: ""
+    resourceUrl: "",
+    modelAnswer: ""
   });
   renderAllQuestions();
   updateSummary();
@@ -452,6 +456,42 @@ function buildQuestionCard(index) {
   card.className = "profile-card question-card";
   card.dataset.qid = q.qid;
 
+  const isEssay = q.type === "essay";
+
+  // ------- جزء الاختيارات (MCQ) أو الإجابة النموذجية (مقالي) -------
+  const answerSectionHtml = isEssay
+    ? `
+      <div class="form-group">
+        <label>الإجابة النموذجية (اختياري)</label>
+        <textarea class="q-model-answer" rows="3"
+          placeholder="اكتب الإجابة المتوقعة أو أهم النقاط اللي المفروض الطالب يذكرها — هتساعد في التصحيح اليدوي أو بالـ AI">${escapeHtml(q.modelAnswer)}</textarea>
+      </div>
+    `
+    : `
+      <div class="form-group">
+        <label>الاختيارات (حدد دائرة الإجابة الصحيحة)</label>
+        <div class="q-options-list">
+          ${q.options.map((opt, optIndex) => `
+            <div class="q-option-row">
+              <input type="radio" name="correct-${q.qid}" class="q-correct-radio"
+                     value="${optIndex}" ${q.correctAnswerIndex === optIndex ? "checked" : ""}>
+              <span class="q-option-label">${getOptionLabel(optIndex)}</span>
+              <input type="text" class="q-option-text" data-index="${optIndex}"
+                     value="${escapeHtml(opt)}" placeholder="نص الاختيار">
+              ${q.options.length > MIN_OPTIONS
+                ? `<button type="button" class="gd-btn gd-btn-reject q-remove-option" data-index="${optIndex}">✕</button>`
+                : ""
+              }
+            </div>
+          `).join("")}
+        </div>
+        ${q.options.length < MAX_OPTIONS
+          ? `<button type="button" class="gd-btn gd-btn-primary q-add-option" style="margin-top: 8px;">+ إضافة اختيار</button>`
+          : ""
+        }
+      </div>
+    `;
+
   card.innerHTML = `
     <div class="question-card-head">
       <strong>سؤال #${index + 1}</strong>
@@ -461,6 +501,14 @@ function buildQuestionCard(index) {
         <button type="button" class="gd-btn gd-btn-primary q-duplicate" title="تكرار السؤال">⧉</button>
         <button type="button" class="gd-btn gd-btn-reject q-delete" title="حذف السؤال">🗑️</button>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label>نوع السؤال</label>
+      <select class="q-type-select">
+        <option value="mcq" ${!isEssay ? "selected" : ""}>اختيار من متعدد</option>
+        <option value="essay" ${isEssay ? "selected" : ""}>مقالي</option>
+      </select>
     </div>
 
     <div class="form-group">
@@ -485,28 +533,7 @@ function buildQuestionCard(index) {
       </div>
     </div>
 
-    <div class="form-group">
-      <label>الاختيارات (حدد دائرة الإجابة الصحيحة)</label>
-      <div class="q-options-list">
-        ${q.options.map((opt, optIndex) => `
-          <div class="q-option-row">
-            <input type="radio" name="correct-${q.qid}" class="q-correct-radio"
-                   value="${optIndex}" ${q.correctAnswerIndex === optIndex ? "checked" : ""}>
-            <span class="q-option-label">${getOptionLabel(optIndex)}</span>
-            <input type="text" class="q-option-text" data-index="${optIndex}"
-                   value="${escapeHtml(opt)}" placeholder="نص الاختيار">
-            ${q.options.length > MIN_OPTIONS
-              ? `<button type="button" class="gd-btn gd-btn-reject q-remove-option" data-index="${optIndex}">✕</button>`
-              : ""
-            }
-          </div>
-        `).join("")}
-      </div>
-      ${q.options.length < MAX_OPTIONS
-        ? `<button type="button" class="gd-btn gd-btn-primary q-add-option" style="margin-top: 8px;">+ إضافة اختيار</button>`
-        : ""
-      }
-    </div>
+    ${answerSectionHtml}
 
     <div class="form-row">
       <div class="form-group">
@@ -516,8 +543,8 @@ function buildQuestionCard(index) {
     </div>
 
     <div class="form-group">
-      <label>تعليق المدرس (اختياري - يظهر للطالب لو غلط)</label>
-      <textarea class="q-comment" rows="2" placeholder="مثال: راجع درس المعادلات">${escapeHtml(q.teacherComment)}</textarea>
+      <label>تعليق المدرس (اختياري${isEssay ? "" : " - يظهر للطالب لو غلط"})</label>
+      <textarea class="q-comment" rows="2" placeholder="${isEssay ? "مثال: راجع طريقة الشرح في الدرس" : "مثال: راجع درس المعادلات"}">${escapeHtml(q.teacherComment)}</textarea>
     </div>
 
     <div class="form-group">
@@ -531,8 +558,21 @@ function buildQuestionCard(index) {
 }
 
 function attachQuestionCardEvents(card, index) {
+  // تغيير نوع السؤال (اختياري ⇄ مقالي) — بيعيد رسم الكارت بالشكل المناسب
+  card.querySelector(".q-type-select").addEventListener("change", (e) => {
+    questions[index].type = e.target.value;
+    refreshOneQuestion(index);
+    updateSummary();
+    saveDraftToStorage();
+  });
+
   card.querySelector(".q-text").addEventListener("input", (e) => {
     questions[index].questionText = e.target.value;
+  });
+
+  const modelAnswerInput = card.querySelector(".q-model-answer");
+  if (modelAnswerInput) modelAnswerInput.addEventListener("input", (e) => {
+    questions[index].modelAnswer = e.target.value;
   });
 
   card.querySelector(".q-comment").addEventListener("input", (e) => {
@@ -690,8 +730,11 @@ function validateQuestions() {
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
     if (!q.questionText.trim()) return `اكتب نص السؤال رقم ${i + 1}`;
-    if (q.options.some((opt) => !opt.trim())) return `فيه اختيار فاضي في السؤال رقم ${i + 1}`;
     if (q.imageUploading) return `استنى رفع الصورة في السؤال رقم ${i + 1} يخلص`;
+    // الاختيارات مطلوبة بس للسؤال الاختياري — المقالي معندوش اختيارات
+    if (q.type !== "essay" && q.options.some((opt) => !opt.trim())) {
+      return `فيه اختيار فاضي في السؤال رقم ${i + 1}`;
+    }
   }
   return null;
 }
@@ -724,15 +767,31 @@ async function saveExam(status) {
       totalPoints,
       questionsCount: questions.length,
       createdAt: new Date().toISOString(),
-      questions: questions.map((q) => ({
-        questionText: q.questionText.trim(),
-        imageUrl: q.imageUrl || null,
-        options: q.options.map((opt) => opt.trim()),
-        correctAnswerIndex: q.correctAnswerIndex,
-        points: Number(q.points) || 0,
-        teacherComment: q.teacherComment.trim() || null,
-        resourceUrl: q.resourceUrl.trim() || null
-      }))
+      questions: questions.map((q) => {
+        // الحقول المشتركة بين النوعين (اختياري / مقالي)
+        const base = {
+          type: q.type || "mcq",
+          questionText: q.questionText.trim(),
+          imageUrl: q.imageUrl || null,
+          points: Number(q.points) || 0,
+          teacherComment: q.teacherComment.trim() || null,
+          resourceUrl: q.resourceUrl.trim() || null
+        };
+
+        if (q.type === "essay") {
+          return {
+            ...base,
+            modelAnswer: (q.modelAnswer || "").trim() || null
+          };
+        }
+
+        // اختيار من متعدد (السلوك الافتراضي)
+        return {
+          ...base,
+          options: q.options.map((opt) => opt.trim()),
+          correctAnswerIndex: q.correctAnswerIndex
+        };
+      })
     };
 
     let savedExamId = editingExamId;

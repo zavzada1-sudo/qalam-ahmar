@@ -48,7 +48,7 @@ let currentStudentId = null;
 let currentStudentName = null;
 let examId = null;
 let examData = null;      // كل بيانات الامتحان (بعد إخفاء الإجابات الصحيحة)
-let studentAnswers = [];  // إجابة الطالب لكل سؤال (index أو null)
+let studentAnswers = [];  // إجابة الطالب لكل سؤال (شكلها بيختلف حسب نوع السؤال)
 let questionStartTimes = []; // وقت بدء عرض كل سؤال (لحساب الوقت المستغرق)
 let examStartTime = null;
 let timerInterval = null;
@@ -58,6 +58,12 @@ let isSubmitting = false;
 
 const ARABIC_LABELS = ["أ", "ب", "ج", "د", "هـ", "و"];
 const ENGLISH_LABELS = ["A", "B", "C", "D", "E", "F"];
+
+// ============================================
+// رفع صور الإجابات المقالية (نفس مفتاح ImgBB المستخدم في create-exam.js)
+// ============================================
+const IMGBB_API_KEY = "6ed0a8bea361b328173b3a4a4a10d10e";
+const MAX_IMAGE_MB = 5;
 
 // ------- تنضيف النصوص لمنع HTML injection -------
 function escapeHtml(str) {
@@ -189,11 +195,12 @@ function prepareExamData(raw) {
     totalPoints: raw.totalPoints || 0,
     teacherId: raw.teacherId,
     questions: (raw.questions || []).map((q) => ({
+      type: q.type || "mcq", // امتحانات قديمة من غير type = اختيار من متعدد
       questionText: q.questionText,
       imageUrl: q.imageUrl,
       options: q.options || []
-      // ملحوظة: correctAnswerIndex, teacherComment, resourceUrl, points
-      // متشالين هنا — الطالب مش محتاجهم دلوقتي، هنستخدمهم في التصحيح لاحقًا
+      // ملحوظة: correctAnswerIndex, modelAnswer, teacherComment, resourceUrl, points
+      // متشالين هنا عمدًا — الطالب مش محتاجهم دلوقتي، هنستخدمهم في التصحيح لاحقًا
     }))
   };
 }
@@ -228,8 +235,14 @@ startExamBtn.addEventListener("click", startExam);
 // ============================================
 
 function startExam() {
-  // تجهيز مصفوفة الإجابات (كلها null في البداية)
-  studentAnswers = examData.questions.map(() => null);
+  // تجهيز مصفوفة الإجابات — شكل مختلف حسب نوع السؤال
+  // اختياري: { selectedIndex: null }
+  // مقالي:   { textAnswer: "", imageUrl: "", imageUploading: false }
+  studentAnswers = examData.questions.map((q) =>
+    q.type === "essay"
+      ? { textAnswer: "", imageUrl: "", imageUploading: false }
+      : { selectedIndex: null }
+  );
   questionStartTimes = examData.questions.map(() => Date.now());
   examStartTime = Date.now();
 
@@ -272,19 +285,37 @@ function getOptionLabel(index) {
 function renderQuestions() {
   questionsList.innerHTML = "";
   examData.questions.forEach((q, qIndex) => {
-    const card = document.createElement("div");
-    card.className = "exam-question-card";
-    card.innerHTML = `
-      <div class="exam-question-head">
-        <span class="exam-question-num">سؤال ${qIndex + 1}</span>
-      </div>
-      <div class="exam-question-text">${escapeHtml(q.questionText)}</div>
-      ${q.imageUrl ? `<img class="exam-question-image" src="${escapeHtml(q.imageUrl)}" alt="صورة السؤال">` : ""}
+    questionsList.appendChild(buildQuestionCard(qIndex));
+  });
+}
+
+// إعادة رسم كارت واحد بس (بنستخدمها بعد رفع/إزالة صورة عشان
+// منعيدش رسم كل الأسئلة ونضيّع اللي الطالب كاتبه في باقي الخانات)
+function refreshOneQuestion(qIndex) {
+  const oldCard = questionsList.querySelector(`[data-qindex="${qIndex}"]`);
+  const newCard = buildQuestionCard(qIndex);
+  if (oldCard) oldCard.replaceWith(newCard);
+}
+
+function buildQuestionCard(qIndex) {
+  const q = examData.questions[qIndex];
+  const answer = studentAnswers[qIndex];
+  const isEssay = q.type === "essay";
+
+  const card = document.createElement("div");
+  card.className = "exam-question-card";
+  card.dataset.qindex = qIndex;
+
+  // ------- جزء الإجابة: اختيارات أو مقالي -------
+  const answerAreaHtml = isEssay
+    ? buildEssayAnswerHtml(qIndex, answer)
+    : `
       <div class="exam-options">
         ${q.options.map((opt, optIndex) => `
           <label class="exam-option">
             <input type="radio" name="q-${qIndex}" value="${optIndex}"
-                   ${studentAnswers[qIndex] === optIndex ? "checked" : ""}>
+                   ${answer.selectedIndex === optIndex ? "checked" : ""}
+                   ${hasTimeExpired ? "disabled" : ""}>
             <span class="exam-option-label">${getOptionLabel(optIndex)}</span>
             <span class="exam-option-text">${escapeHtml(opt)}</span>
           </label>
@@ -292,20 +323,144 @@ function renderQuestions() {
       </div>
     `;
 
-    card.querySelectorAll("input[type='radio']").forEach((radio) => {
-      radio.addEventListener("change", (e) => {
-        if (hasTimeExpired) return; // لو الوقت خلص، ممنوع التغيير
-        studentAnswers[qIndex] = Number(e.target.value);
-        updateAnsweredCount();
-      });
-    });
+  card.innerHTML = `
+    <div class="exam-question-head">
+      <span class="exam-question-num">سؤال ${qIndex + 1}</span>
+      ${isEssay ? `<span class="exam-question-type">مقالي</span>` : ""}
+    </div>
+    <div class="exam-question-text">${escapeHtml(q.questionText)}</div>
+    ${q.imageUrl ? `<img class="exam-question-image" src="${escapeHtml(q.imageUrl)}" alt="صورة السؤال">` : ""}
+    ${answerAreaHtml}
+  `;
 
-    questionsList.appendChild(card);
+  if (isEssay) attachEssayEvents(card, qIndex);
+  else attachMcqEvents(card, qIndex);
+
+  return card;
+}
+
+// ------- HTML خانة الإجابة المقالية (نص و/أو صورة) -------
+function buildEssayAnswerHtml(qIndex, answer) {
+  return `
+    <div class="essay-answer">
+      <p class="essay-hint">اكتب إجابتك في الخانة، أو صوّر ورقتك وارفع الصورة — أو الاتنين مع بعض.</p>
+
+      <textarea class="essay-text" rows="5"
+        placeholder="اكتب إجابتك هنا..."
+        ${hasTimeExpired ? "disabled" : ""}>${escapeHtml(answer.textAnswer)}</textarea>
+
+      <div class="essay-image-area">
+        ${answer.imageUrl
+          ? `<div class="essay-image-preview">
+               <img src="${escapeHtml(answer.imageUrl)}" alt="صورة إجابتك">
+               <button type="button" class="btn btn-outline essay-remove-image"
+                 ${hasTimeExpired ? "disabled" : ""}>إزالة الصورة</button>
+             </div>`
+          : `<label class="essay-upload-btn ${hasTimeExpired ? "disabled" : ""}">
+               📷 صوّر ورقتك / ارفع صورة
+               <input type="file" class="essay-image-input" accept="image/*"
+                 ${hasTimeExpired ? "disabled" : ""} hidden>
+             </label>`
+        }
+        ${answer.imageUploading ? `<span class="essay-uploading">جاري رفع الصورة...</span>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+// ------- أحداث السؤال الاختياري -------
+function attachMcqEvents(card, qIndex) {
+  card.querySelectorAll("input[type='radio']").forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      if (hasTimeExpired) return; // لو الوقت خلص، ممنوع التغيير
+      studentAnswers[qIndex].selectedIndex = Number(e.target.value);
+      updateAnsweredCount();
+    });
   });
 }
 
+// ------- أحداث السؤال المقالي -------
+function attachEssayEvents(card, qIndex) {
+  // الكتابة: بنحدّث الحالة بس من غير إعادة رسم (عشان منضيّعش مكان المؤشر)
+  const textarea = card.querySelector(".essay-text");
+  if (textarea) textarea.addEventListener("input", (e) => {
+    if (hasTimeExpired) return;
+    studentAnswers[qIndex].textAnswer = e.target.value;
+    updateAnsweredCount();
+  });
+
+  const imageInput = card.querySelector(".essay-image-input");
+  if (imageInput) imageInput.addEventListener("change", (e) => handleAnswerImageUpload(e, qIndex));
+
+  const removeImageBtn = card.querySelector(".essay-remove-image");
+  if (removeImageBtn) removeImageBtn.addEventListener("click", () => {
+    if (hasTimeExpired) return;
+    studentAnswers[qIndex].imageUrl = "";
+    refreshOneQuestion(qIndex);
+    updateAnsweredCount();
+  });
+}
+
+// ============================================
+// رفع صورة إجابة الطالب على ImgBB
+// ============================================
+
+async function handleAnswerImageUpload(event, qIndex) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("لازم تختار ملف صورة بس", "error");
+    return;
+  }
+  if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+    showToast(`حجم الصورة أكبر من ${MAX_IMAGE_MB} ميجا، اختار صورة أصغر`, "error");
+    return;
+  }
+
+  studentAnswers[qIndex].imageUploading = true;
+  refreshOneQuestion(qIndex);
+
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+      method: "POST",
+      body: formData
+    });
+    const result = await response.json();
+
+    if (!result.success) throw new Error(result.error?.message || "فشل الرفع");
+
+    studentAnswers[qIndex].imageUrl = result.data.url;
+    showToast("تم رفع الصورة ✅", "success");
+  } catch (error) {
+    console.error("Answer image upload error:", error);
+    showToast("تعذر رفع الصورة، حاول تاني", "error");
+  } finally {
+    studentAnswers[qIndex].imageUploading = false;
+    refreshOneQuestion(qIndex);
+    updateAnsweredCount();
+  }
+}
+
+// ------- هل السؤال ده متجاوب عليه؟ -------
+function isAnswered(qIndex) {
+  const answer = studentAnswers[qIndex];
+  if (examData.questions[qIndex].type === "essay") {
+    return Boolean(answer.textAnswer.trim() || answer.imageUrl);
+  }
+  return answer.selectedIndex !== null;
+}
+
+// ------- هل لسه فيه صور بترفع؟ -------
+function hasPendingUploads() {
+  return studentAnswers.some((a) => a.imageUploading);
+}
+
 function updateAnsweredCount() {
-  const answered = studentAnswers.filter((a) => a !== null).length;
+  const answered = examData.questions.filter((_, i) => isAnswered(i)).length;
   answeredCount.textContent = answered;
 }
 
@@ -337,8 +492,15 @@ function updateTimerDisplay() {
 function onTimeExpired() {
   hasTimeExpired = true;
   timerDisplay.textContent = "00:00";
-  // نعطّل كل الـ radio buttons (منمنعش تغيير الإجابات)
-  questionsList.querySelectorAll("input[type='radio']").forEach((r) => r.disabled = true);
+
+  // نعطّل كل خانات الإجابة: اختيارات + الكتابة المقالية + رفع الصور
+  questionsList.querySelectorAll("input[type='radio'], textarea, input[type='file']")
+    .forEach((el) => { el.disabled = true; });
+  questionsList.querySelectorAll(".essay-upload-btn")
+    .forEach((el) => el.classList.add("disabled"));
+  questionsList.querySelectorAll(".essay-remove-image")
+    .forEach((el) => { el.disabled = true; });
+
   // نظهر مودال "الوقت خلص"
   timeUpModal.classList.remove("hidden");
 }
@@ -358,7 +520,13 @@ submitBtnBottom.addEventListener("click", requestSubmit);
 function requestSubmit() {
   if (isSubmitting) return;
 
-  const unanswered = studentAnswers.filter((a) => a === null).length;
+  // لو لسه فيه صورة بترفع، نستنى عشان ماتضيعش من الإجابة
+  if (hasPendingUploads()) {
+    showToast("استنى رفع الصورة يخلص الأول", "error");
+    return;
+  }
+
+  const unanswered = examData.questions.filter((_, i) => !isAnswered(i)).length;
   if (unanswered > 0 && !hasTimeExpired) {
     confirmSubmitMessage.textContent =
       `لسه فيه ${unanswered} سؤال من غير إجابة. هيتم اعتبارهم غلط. متأكد إنك عايز تسلّم؟`;
@@ -390,25 +558,40 @@ async function submitExam() {
 
     const totalTimeSpent = Math.floor((Date.now() - examStartTime) / 1000);
 
-    // نبني الإجابات (index أو null)
-    const answers = studentAnswers.map((ans, i) => ({
-      questionIndex: i,
-      selectedIndex: ans   // null لو ما جاوبش
-    }));
+    // نبني الإجابات — شكل مختلف حسب نوع السؤال
+    const answers = studentAnswers.map((ans, i) => {
+      if (examData.questions[i].type === "essay") {
+        return {
+          questionIndex: i,
+          type: "essay",
+          textAnswer: ans.textAnswer.trim() || null,
+          imageUrl: ans.imageUrl || null
+        };
+      }
+      return {
+        questionIndex: i,
+        type: "mcq",
+        selectedIndex: ans.selectedIndex   // null لو ما جاوبش
+      };
+    });
 
-    // نحفظ الحل في submissions (status: queued — التصحيح هيحصل في الجزء التاني)
+    // فيه أسئلة مقالية؟ (بيحدد إذا كان الامتحان محتاج مراجعة المدرس بعد التصحيح التلقائي)
+    const hasEssayQuestions = examData.questions.some((q) => q.type === "essay");
+
+    // نحفظ الحل في submissions (status: queued — التصحيح بيحصل في results.js)
     await addDoc(collection(db, "submissions"), {
       examId,
       studentId: currentStudentId,
       studentName: currentStudentName,
       teacherId: examData.teacherId,
       answers,
+      hasEssayQuestions,
       totalTimeSpent,
-      status: "queued",   // هيتحول لـ "graded" لما نعمل التصحيح
+      status: "queued",
       submittedAt: new Date().toISOString()
     });
 
-    // نروح لصفحة النتيجة (اللي هنعملها في الجزء التاني)
+    // نروح لصفحة النتيجة
     window.location.href = `results.html?examId=${examId}`;
 
   } catch (error) {
