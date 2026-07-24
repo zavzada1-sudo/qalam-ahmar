@@ -51,9 +51,12 @@
           <h1 id="examTitle"></h1>
           <p id="examMeta"></p>
         </div>
-        <button id="exportBtn" class="btn btn-outline" type="button">
-          ⬇ تصدير CSV
-        </button>
+        <div class="grades-header-actions">
+          <a id="printGradesLink" href="#" class="btn btn-outline" target="_blank">🖶 طباعة الكشف</a>
+          <button id="exportBtn" class="btn btn-outline" type="button">
+            ⬇ تصدير CSV
+          </button>
+        </div>
       </div>
 
       <!-- كروت الإحصائيات (نفس كروت لوحة التحكم) -->
@@ -162,6 +165,11 @@
     .grades-header p {
       font-size: 13px;
       color: var(--text-muted);
+    }
+    .grades-header-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     /* شريط الأدوات */
