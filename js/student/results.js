@@ -18,6 +18,7 @@ const resultsView = document.getElementById("resultsView");
 const errorTitle = document.getElementById("errorTitle");
 const errorMessage = document.getElementById("errorMessage");
 
+const pendingReviewBanner = document.getElementById("pendingReviewBanner");
 const examTitle = document.getElementById("examTitle");
 const scoreValue = document.getElementById("scoreValue");
 const scoreTotal = document.getElementById("scoreTotal");
@@ -101,22 +102,37 @@ onAuthStateChanged(auth, async (user) => {
     }
     const exam = examSnap.data();
 
-    // لو لسه queued، نصححها ونحفظها
+    // لو لسه queued، نصحح الجزء الاختياري ونحفظه
+    // (المقالي مش بيتصحح هنا — إما المدرس يصححه يدوي أو بالـ AI لاحقًا)
     if (submission.status === "queued") {
-      const graded = gradeSubmission(exam, submission);
-      await updateDoc(doc(db, "submissions", submissionId), {
-        status: "graded",
-        score: graded.score,
-        totalPoints: graded.totalPoints,
-        percentage: graded.percentage,
-        correctCount: graded.correctCount,
-        wrongCount: graded.wrongCount,
-        unansweredCount: graded.unansweredCount,
+      const mcqResult = gradeMcqPortion(exam, submission);
+      const hasEssay = (exam.questions || []).some((q) => q.type === "essay");
+
+      const updateData = {
+        mcqScore: mcqResult.mcqScore,
+        mcqTotalPoints: mcqResult.mcqTotalPoints,
+        correctCount: mcqResult.correctCount,
+        wrongCount: mcqResult.wrongCount,
+        unansweredCount: mcqResult.unansweredCount,
         gradedAt: new Date().toISOString(),
         // ملاحظة: مش بنحفظ الإجابات الصحيحة نفسها في الـ submission
         // عشان لو المدرس عدّل الامتحان مش نحفظ نسخة قديمة، بنقارن دايمًا مع الأصل
-      });
-      submission = { ...submission, ...graded, status: "graded" };
+      };
+
+      if (hasEssay) {
+        // فيه أسئلة مقالية لسه محتاجة تصحيح — الدرجة النهائية مش جاهزة
+        updateData.status = "pending_review";
+        updateData.totalPoints = exam.totalPoints || 0;
+      } else {
+        // امتحان اختياري بالكامل — الدرجة جاهزة فورًا
+        updateData.status = "graded";
+        updateData.score = mcqResult.mcqScore;
+        updateData.totalPoints = mcqResult.mcqTotalPoints;
+        updateData.percentage = mcqResult.mcqPercentage;
+      }
+
+      await updateDoc(doc(db, "submissions", submissionId), updateData);
+      submission = { ...submission, ...updateData };
     }
 
     // نعرض النتيجة
@@ -129,22 +145,24 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ============================================
-// التصحيح
+// التصحيح (الأسئلة الاختيارية فقط — المقالي بره الحساب هنا)
 // ============================================
 
-function gradeSubmission(exam, submission) {
+function gradeMcqPortion(exam, submission) {
   const questions = exam.questions || [];
   const answers = submission.answers || [];
 
-  let score = 0;
-  let totalPoints = 0;
+  let mcqScore = 0;
+  let mcqTotalPoints = 0;
   let correct = 0;
   let wrong = 0;
   let unanswered = 0;
 
   questions.forEach((q, i) => {
+    if (q.type === "essay") return; // المقالي بيتصحح لوحده منفصل، مش هنا
+
     const points = Number(q.points) || 0;
-    totalPoints += points;
+    mcqTotalPoints += points;
 
     const studentAnswer = answers[i]?.selectedIndex;
 
@@ -152,15 +170,15 @@ function gradeSubmission(exam, submission) {
       unanswered++;
     } else if (studentAnswer === q.correctAnswerIndex) {
       correct++;
-      score += points;
+      mcqScore += points;
     } else {
       wrong++;
     }
   });
 
-  const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+  const mcqPercentage = mcqTotalPoints > 0 ? Math.round((mcqScore / mcqTotalPoints) * 100) : 0;
 
-  return { score, totalPoints, percentage, correctCount: correct, wrongCount: wrong, unansweredCount: unanswered };
+  return { mcqScore, mcqTotalPoints, mcqPercentage, correctCount: correct, wrongCount: wrong, unansweredCount: unanswered };
 }
 
 // ============================================
@@ -190,79 +208,135 @@ function formatTime(seconds) {
 }
 
 function renderResults(exam, submission) {
-  examTitle.textContent = exam.title;
-  scoreValue.textContent = submission.score;
-  scoreTotal.textContent = submission.totalPoints;
-  scorePercentage.textContent = `${submission.percentage}%`;
+  const isPending = submission.status === "pending_review";
 
-  const verdict = getVerdict(submission.percentage);
-  scoreVerdict.textContent = verdict.text;
-  scoreVerdict.style.color = verdict.color;
-  scoreCircle.style.borderColor = verdict.color;
+  examTitle.textContent = exam.title;
+  timeSpent.textContent = formatTime(submission.totalTimeSpent);
+
+  // ------- البانر والدرجة -------
+  if (isPending) {
+    // امتحان فيه مقالي لسه ما اتصححش — نعرض درجة الاختياري بس
+    pendingReviewBanner.classList.remove("hidden");
+
+    scoreValue.textContent = submission.mcqScore;
+    scoreTotal.textContent = submission.mcqTotalPoints;
+    scorePercentage.textContent = `${submission.mcqTotalPoints > 0 ? Math.round((submission.mcqScore / submission.mcqTotalPoints) * 100) : 0}%`;
+
+    scoreVerdict.textContent = "قيد المراجعة ⏳";
+    scoreVerdict.style.color = "var(--text-muted)";
+    scoreCircle.style.borderColor = "var(--text-light)";
+  } else {
+    // امتحان اختياري بالكامل — الدرجة نهائية
+    pendingReviewBanner.classList.add("hidden");
+
+    scoreValue.textContent = submission.score;
+    scoreTotal.textContent = submission.totalPoints;
+    scorePercentage.textContent = `${submission.percentage}%`;
+
+    const verdict = getVerdict(submission.percentage);
+    scoreVerdict.textContent = verdict.text;
+    scoreVerdict.style.color = verdict.color;
+    scoreCircle.style.borderColor = verdict.color;
+  }
 
   correctCount.textContent = submission.correctCount;
   wrongCount.textContent = submission.wrongCount;
   unansweredCount.textContent = submission.unansweredCount;
-  timeSpent.textContent = formatTime(submission.totalTimeSpent);
 
-  // مراجعة كل سؤال
+  // ------- مراجعة كل سؤال -------
   const labelStyle = exam.labelStyle || "arabic";
   const questions = exam.questions || [];
   const answers = submission.answers || [];
 
   reviewList.innerHTML = "";
   questions.forEach((q, i) => {
-    const studentAnswer = answers[i]?.selectedIndex;
-    const correctIndex = q.correctAnswerIndex;
-    const isUnanswered = studentAnswer === null || studentAnswer === undefined;
-    const isCorrect = !isUnanswered && studentAnswer === correctIndex;
-
-    const statusClass = isCorrect ? "correct" : (isUnanswered ? "unanswered" : "wrong");
-    const statusLabel = isCorrect ? "✅ صح" : (isUnanswered ? "➖ مش متجاوب" : "❌ غلط");
-
-    const card = document.createElement("div");
-    card.className = `review-card ${statusClass}`;
-    card.innerHTML = `
-      <div class="review-head">
-        <span class="review-num">سؤال ${i + 1}</span>
-        <span class="review-status">${statusLabel}</span>
-      </div>
-      <div class="review-question">${escapeHtml(q.questionText)}</div>
-      ${q.imageUrl ? `<img class="review-image" src="${escapeHtml(q.imageUrl)}" alt="صورة">` : ""}
-
-      <div class="review-options">
-        ${q.options.map((opt, optIndex) => {
-          let optClass = "review-option";
-          if (optIndex === correctIndex) optClass += " correct";
-          if (!isUnanswered && optIndex === studentAnswer && studentAnswer !== correctIndex) optClass += " wrong";
-          if (!isUnanswered && optIndex === studentAnswer && studentAnswer === correctIndex) optClass += " picked-correct";
-
-          return `
-            <div class="${optClass}">
-              <span class="review-option-label">${getOptionLabel(labelStyle, optIndex)}</span>
-              <span class="review-option-text">${escapeHtml(opt)}</span>
-              ${optIndex === correctIndex ? '<span class="review-mark">✓ الإجابة الصح</span>' : ""}
-              ${!isUnanswered && optIndex === studentAnswer && studentAnswer !== correctIndex ? '<span class="review-mark wrong">إجابتك</span>' : ""}
-            </div>
-          `;
-        }).join("")}
-      </div>
-
-      ${q.teacherComment && !isCorrect ? `
-        <div class="review-comment">
-          <strong>💬 تعليق المدرس:</strong> ${escapeHtml(q.teacherComment)}
-        </div>
-      ` : ""}
-
-      ${q.resourceUrl && !isCorrect ? `
-        <div class="review-resource">
-          <a href="${escapeHtml(q.resourceUrl)}" target="_blank" rel="noopener noreferrer">📚 مصدر للمراجعة</a>
-        </div>
-      ` : ""}
-    `;
+    const card = q.type === "essay"
+      ? buildEssayReviewCard(q, answers[i], i)
+      : buildMcqReviewCard(q, answers[i], i, labelStyle);
     reviewList.appendChild(card);
   });
 
   gradingView.classList.add("hidden");
   resultsView.classList.remove("hidden");
+}
+
+// ------- كارت مراجعة سؤال اختياري -------
+function buildMcqReviewCard(q, answer, i, labelStyle) {
+  const studentAnswer = answer?.selectedIndex;
+  const correctIndex = q.correctAnswerIndex;
+  const isUnanswered = studentAnswer === null || studentAnswer === undefined;
+  const isCorrect = !isUnanswered && studentAnswer === correctIndex;
+
+  const statusClass = isCorrect ? "correct" : (isUnanswered ? "unanswered" : "wrong");
+  const statusLabel = isCorrect ? "✅ صح" : (isUnanswered ? "➖ مش متجاوب" : "❌ غلط");
+
+  const card = document.createElement("div");
+  card.className = `review-card ${statusClass}`;
+  card.innerHTML = `
+    <div class="review-head">
+      <span class="review-num">سؤال ${i + 1}</span>
+      <span class="review-status">${statusLabel}</span>
+    </div>
+    <div class="review-question">${escapeHtml(q.questionText)}</div>
+    ${q.imageUrl ? `<img class="review-image" src="${escapeHtml(q.imageUrl)}" alt="صورة">` : ""}
+
+    <div class="review-options">
+      ${q.options.map((opt, optIndex) => {
+        let optClass = "review-option";
+        if (optIndex === correctIndex) optClass += " correct";
+        if (!isUnanswered && optIndex === studentAnswer && studentAnswer !== correctIndex) optClass += " wrong";
+        if (!isUnanswered && optIndex === studentAnswer && studentAnswer === correctIndex) optClass += " picked-correct";
+
+        return `
+          <div class="${optClass}">
+            <span class="review-option-label">${getOptionLabel(labelStyle, optIndex)}</span>
+            <span class="review-option-text">${escapeHtml(opt)}</span>
+            ${optIndex === correctIndex ? '<span class="review-mark">✓ الإجابة الصح</span>' : ""}
+            ${!isUnanswered && optIndex === studentAnswer && studentAnswer !== correctIndex ? '<span class="review-mark wrong">إجابتك</span>' : ""}
+          </div>
+        `;
+      }).join("")}
+    </div>
+
+    ${q.teacherComment && !isCorrect ? `
+      <div class="review-comment">
+        <strong>💬 تعليق المدرس:</strong> ${escapeHtml(q.teacherComment)}
+      </div>
+    ` : ""}
+
+    ${q.resourceUrl && !isCorrect ? `
+      <div class="review-resource">
+        <a href="${escapeHtml(q.resourceUrl)}" target="_blank" rel="noopener noreferrer">📚 مصدر للمراجعة</a>
+      </div>
+    ` : ""}
+  `;
+  return card;
+}
+
+// ------- كارت مراجعة سؤال مقالي -------
+// ملحوظة: مفيش تصحيح هنا خالص — بس بنعرض إجابة الطالب زي ما هي.
+// التعليق والمصدر ومقارنة الإجابة النموذجية بيحصلوا بعد التصحيح (يدوي أو AI) في مرحلة تانية.
+function buildEssayReviewCard(q, answer, i) {
+  const hasTextAnswer = Boolean(answer?.textAnswer);
+  const hasImageAnswer = Boolean(answer?.imageUrl);
+  const isUnanswered = !hasTextAnswer && !hasImageAnswer;
+
+  const statusClass = isUnanswered ? "unanswered" : "pending";
+  const statusLabel = isUnanswered ? "➖ مش متجاوب" : "⏳ قيد المراجعة";
+
+  const card = document.createElement("div");
+  card.className = `review-card ${statusClass}`;
+  card.innerHTML = `
+    <div class="review-head">
+      <span class="review-num">سؤال ${i + 1} (مقالي)</span>
+      <span class="review-status">${statusLabel}</span>
+    </div>
+    <div class="review-question">${escapeHtml(q.questionText)}</div>
+    ${q.imageUrl ? `<img class="review-image" src="${escapeHtml(q.imageUrl)}" alt="صورة السؤال">` : ""}
+
+    ${hasTextAnswer ? `<div class="review-essay-answer">${escapeHtml(answer.textAnswer)}</div>` : ""}
+    ${hasImageAnswer ? `<img class="review-image" src="${escapeHtml(answer.imageUrl)}" alt="صورة إجابتك">` : ""}
+    ${isUnanswered ? `<p class="review-essay-answer">لم تتم الإجابة على هذا السؤال</p>` : ""}
+  `;
+  return card;
 }

@@ -1128,6 +1128,18 @@ button { font-family: inherit; cursor: pointer; }
 .review-resource { margin-top: 8px; }
 .review-resource a { color: var(--primary); font-size: .9rem; font-weight: 600; text-decoration: none; }
 .review-resource a:hover { text-decoration: underline; }
+/* بانر "قيد المراجعة" لما الامتحان فيه مقالي لسه ما اتصححش */
+.result-pending-banner { background: var(--orange-light); border: 1px solid var(--orange);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: .9rem;
+  color: var(--text); line-height: 1.6; text-align: center; }
+
+/* حالة "قيد المراجعة" لكارت السؤال المقالي (لون محايد، مش أخضر ولا أحمر) */
+.review-card.pending { border-right-color: var(--orange); }
+
+/* عرض إجابة الطالب النصية على السؤال المقالي (للقراءة فقط) */
+.review-essay-answer { background: var(--bg-subtle); border-radius: 8px; padding: 12px 14px;
+  color: var(--text); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;
+  margin-bottom: 10px; }
 
 
 
